@@ -100,7 +100,8 @@ The release provides a 64-bit build:
 | `Notepad4-ML.exe` | Main program (multi-tab build) |
 | `matepath.exe` | The file browser tool shipped with upstream |
 | `locale/<lang>/Notepad4-ML.dll` | UI language resources (optional, place as needed) |
-| `LICENSE` | License text |
+| `LICENSE` / `NOTICE` | License text and upstream copyright notices |
+| `README.md` / `readme_zh_cn.md` | English and Simplified Chinese documentation |
 
 Extract everything into the same directory. The `locale` folder is optional;
 without it the UI is English.
