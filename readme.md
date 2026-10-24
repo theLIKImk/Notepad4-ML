@@ -1,219 +1,120 @@
-# Notepad4 and matepath
+# Notepad4-ML (Notepad4-MultiLabel)
 
-Notepad4 (Notepad2⨯2, Notepad2++) is a light-weight Scintilla based text editor for Windows with syntax highlighting, code folding, auto-completion and API list for many programming languages and documents, it's based on (rewritten in modern C++) Florian's [Notepad2](https://www.flos-freeware.ch/notepad2.html) and XhmikosR's [Notepad2-mod](https://xhmikosr.github.io/notepad2-mod/). matepath is a file browser plugin and based on (rewritten in modern C++) Florian's [metapath](https://www.flos-freeware.ch/archive.html).
+![Notepad4-ML](docs/Notepad4-ml-bar.png)
 
-[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](License.txt) [![Latest release](https://img.shields.io/github/release/zufuliu/notepad4.svg)](https://github.com/zufuliu/notepad4/releases) [![Downloads](https://img.shields.io/github/downloads/zufuliu/notepad4/total.svg)](https://github.com/zufuliu/notepad4/releases)
+Notepad4-ML 是基于 [Notepad4](https://github.com/zufuliu/notepad4) 的多标签分支版本，
+为这个原本单文档的轻量编辑器增加了标签页与滚动条匹配标记。
 
-## Binaries
-Latest development builds (artifacts in Release configuration for each compiler and platform) are available on [GitHub Actions](https://github.com/zufuliu/notepad4/actions) and [AppVeyor](https://ci.appveyor.com/project/zufuliu/notepad4). Or you can build from source, see [Wiki](https://github.com/zufuliu/notepad4/wiki/Build-Notepad4).
+- **版本**：0.1
+- **基于上游**：Notepad4 v26.10 (r6392, 7b269f54)
+- **上游基线提交**：`3afea94b18c469b95b504553a5ece1a9e4c57d9e`（2026-10-23）
+- **许可**：BSD 3-Clause，见 [LICENSE](LICENSE)
 
-| GitHub Actions (MSVC, Clang, GCC) | AppVeyor (MSVC, Clang) |
-| --------------- | -------- |
-| [![Build status](https://github.com/zufuliu/notepad4/workflows/CI/badge.svg)](https://github.com/zufuliu/notepad4/actions) | [![Build status](https://ci.appveyor.com/api/projects/status/github/zufuliu/notepad4?branch=main&svg=true)](https://ci.appveyor.com/project/zufuliu/notepad4) |
+## 与上游的关系
 
-## [Screenshots](https://github.com/zufuliu/notepad4/wiki/Screenshots)
-![v24.07 HD](https://raw.githubusercontent.com/wiki/zufuliu/notepad4/screenshots/v24.07HD.png)
+Notepad4-ML **不是** Notepad4 官方版本，也不由 Notepad4 作者维护。
+它是一个独立的分支：
 
-## Changes compared to [Notepad2](https://www.flos-freeware.ch/notepad2.html) or [Notepad2-mod](https://xhmikosr.github.io/notepad2-mod/):
+- 上游项目：<https://github.com/zufuliu/notepad4>
+- 上游版权归 Zufu Liu 及所有贡献者所有
+- 本分支只在上游基础上增加了下列功能，其余行为与上游一致
 
-* Support for bookmarks
-* Option to mark all occurrences of a word or selection, and show matched count
-* [Enhanced auto-completion for words and functions](https://github.com/zufuliu/notepad4/wiki/Auto-Completion-in-Notepad4)
-* [Context-based auto-completion for some words](https://github.com/zufuliu/notepad4/wiki/Auto-Completion-in-Notepad4#context-based-auto-completion)
-* [Enhanced auto indentation](https://github.com/zufuliu/notepad4/wiki/Auto-Completion-in-Notepad4#auto-indent-text)
-* [Auto completion for braces, brackets and quotes](https://github.com/zufuliu/notepad4/wiki/Auto-Completion-in-Notepad4#auto-insert-text)
-* [Color preview via CallTip and click CallTip to open color dialog](https://github.com/zufuliu/notepad4/wiki/CallTip)
-* Support Base64 encoding and decoding
-* Syntax highlighting, code folding and API list for (see built-in [file extension list](doc/FileExt.txt)):
-	* Plain Text
-	* [ABAQUS](tools/lang/ABAQUS.inp)
-	* [ActionScript](tools/lang/ActionScript.as) for ActionScript 3 and 4.
-	* Android Smali, [Screenshots](https://github.com/zufuliu/notepad4/wiki/Screenshots#android-smali)
-		* [javap](https://docs.oracle.com/en/java/javase/17/docs/specs/man/javap.html)
-		* [Jasmin](https://jasmin.sourceforge.net/)
-	* ANSI Art
-	* [ANSYS](tools/lang/APDL.cdb) Parametric Design Language
-	* Assembler, [Screenshots](https://github.com/zufuliu/notepad4/wiki/Screenshots#assembler)
-		* MASM
-		* GNU Assembler
-		* [NASM](https://nasm.us/)
-	* [Asymptote Vector Graphics Language](tools/lang/Asymptote.asy), up to Asymptote 2.70.
-	* [AutoHotkey_L](tools/lang/AutoHotkey_L.ahk) and [AutoHotkey_H](tools/lang/AutoHotkey_H.ahk) Script, up to v2.
-	* [AutoIt3](tools/lang/AutoIt3.au3) Script, up to 3.3.16.
-	* [AviSynth Script](tools/lang/AviSynth.avs), up to AviSynth 2.6, AviSynth+ 3.6, GScript 1.1.
-	* [AWK](tools/lang/Awk.awk), up to GNU AWK 5.3.
-	* [Batch Script](tools/lang/Batch.bat), [Screenshots](https://github.com/zufuliu/notepad4/wiki/Screenshots#batch)
-	* [blockdiag](tools/lang/blockdiag.diag), seqdiag, actdiag and nwdiag
-	* [C#](tools/lang/CSharp.cs), up to C# 14.0. [Screenshots](https://github.com/zufuliu/notepad4/wiki/Screenshots#c)
-		* [Vala](https://wiki.gnome.org/Projects/Vala) 0.54
-	* C/C++, [Screenshots](https://github.com/zufuliu/notepad4/wiki/Screenshots#cc)
-		* Objective-C/C++, [Screenshots](https://github.com/zufuliu/notepad4/wiki/Screenshots#objective-cc)
-		* [C Standard Library](tools/lang/C.c), up to C23.
-		* [C++ STL](tools/lang/CPP.cpp), up to C++23.
-	* [Cangjie (仓颉)](tools/lang/Cangjie.cj), up to Cangjie 2025.
-	* [CSS Style Sheet](tools/lang/CSS.css), up to May 2026.
-		* [SCSS Style Sheet](tools/lang/SCSS.scss), up to Dart Sass 1.50.
-		* [Less Style Sheet](tools/lang/Less.less), up to Less 4.1.
-		* [HSS Style Sheet](tools/lang/HSS.hss)
-	* [CMake](tools/lang/CMake.cmake), up to CMake 3.29. [Screenshots](https://github.com/zufuliu/notepad4/wiki/Screenshots#cmake)
-	* [CoffeeScript](tools/lang/CoffeeScript.coffee), CoffeeScript 2.7.
-	* Common Intermediate Language
-	* Configuration / Properties File
-		* Apache Configuration File
-	* [CSV File](https://www.rfc-editor.org/rfc/rfc4180)
-	* [D](tools/lang/D.d), up to D language 2.0.
-	* [Dart](tools/lang/Dart.dart), up to Dart 3.11.
-	* Diff/Patch File
-	* [Elixir](tools/lang/Elixir.ex), up to Elixir 1.19.
-	* [Erlang](tools/lang/Erlang.erl), up to Erlang/OTP 28.4.
-	* [F#](tools/lang/FSharp.fs), up to F# 10.0.
-	* [Fortran](tools/lang/Fortran.f), up to Fortran 2023.
-	* [GN Build](tools/lang/GN.gn), up to GN 2019-03-13.
-	* [Go](tools/lang/Go.go), up to Go 1.26.
-		* [Go+ (GoPlus)](https://goplus.org/) and the Q language
-	* [Gradle](tools/lang/Gradle.gradle), up to Gradle 8.3, [Screenshots](https://github.com/zufuliu/notepad4/wiki/Screenshots#gradle)
-	* [GraphViz Dot](tools/lang/GraphViz.dot), up to GraphViz 2.49, [Screenshots](https://github.com/zufuliu/notepad4/wiki/Screenshots#graphviz)
-	* [Groovy](tools/lang/Groovy.groovy), up to Groovy 5.0.
-	* [Haskell](tools/lang/Haskell.hs), up to GHC 9.6.
-	* [Haxe](tools/lang/Haxe.hx), up to Haxe 4.3.
-	* [HTML](tools/lang/html.html), up to [WHATWG](https://html.spec.whatwg.org/multipage/) May 2026. [Screenshots](https://github.com/zufuliu/notepad4/wiki/Screenshots#html)
-		* ASP
-		* ASP.NET
-		* JSP and JSP XML Syntax
-		* PHP
-	* INI Configuration File
-	* [Inno Setup](tools/lang/InnoSetup.iss), up to Inno Setup 6.2.
-	* [Boost Jam](tools/lang/Jamfile.jam), up to Jam 4.4.
-	* [Java](tools/lang/Java.java), up to Java 25. [Screenshots](https://github.com/zufuliu/notepad4/wiki/Screenshots#java)
-		* [BeanShell](https://github.com/beanshell/beanshell)
-	* [JavaScript](tools/lang/JavaScript.js), up to ECMAScript 2026 with [JSX](https://facebook.github.io/jsx/) and [Web APIs](https://developer.mozilla.org/en-US/docs/Web/API).
-	* [JSON](https://www.json.org) and [JSON5](https://json5.org/) Document
-	* [Julia Script](tools/lang/Julia.jl), up to Julia 1.9. [Screenshots](https://github.com/zufuliu/notepad4/wiki/Screenshots#julia)
-	* [Kotlin](tools/lang/Kotlin.kt), up to Kotlin 2.3.
-	* [LaTeX](tools/lang/LaTeX.tex)
-	* Lisp Script (Common Lisp, Clojure, Scheme, etc.)
-	* [LLVM IR](tools/lang/LLVM.ll), up to LLVM 21.
-		* [MLIR](tools/lang/MLIR.mlir)
-	* [Lua Script](tools/lang/Lua.lua), up to Lua 5.5.
-	* Makefile, [Screenshots](https://github.com/zufuliu/notepad4/wiki/Screenshots#makefile)
-		* nmake
-		* gmake
-		* Borland bmake
-		* qmake
-		* ninja
-	* Markdown, up to [CommonMark](https://spec.commonmark.org/) 0.31, with following extensions:
-		* [GitHub Flavored Markdown](https://github.github.com/gfm/)
-		* [GitLab Flavored Markdown](https://docs.gitlab.com/ee/user/markdown.html)
-		* [Pandoc’s Markdown](https://pandoc.org/MANUAL.html#pandocs-markdown)
-	* [Mathematica](tools/lang/Mathematica.nb) and [WolframScript](https://www.wolfram.com/wolframscript/)
-	* MATLAB, [Screenshots](https://github.com/zufuliu/notepad4/wiki/Screenshots#matlab-octave)
-		* Octave
-		* Scilab
-		* Gnuplot
-	* [Nim Script](tools/lang/Nim.nim), up to Nim 2.2.
-	* [Nullsoft Scriptable Install System](tools/lang/NSIS.nsi), up to NSIS 3.09.
-	* [OCaml](tools/lang/OCaml.ml), up to OCaml 5.0.
-	* Pascal, Delphi
-	* [Perl](tools/lang/Perl.pl), up to Perl 5.42. [Screenshots](https://github.com/zufuliu/notepad4/wiki/Screenshots#perl)
-	* [PowerBuilder](tools/lang/PowerBuilder.srf), up to PowerBuilder 2025.
-	* [PowerShell](tools/lang/PowerShell.ps1), up to PowerShell 7.2.
-	* [Python](tools/lang/Python.py), up to Python 3.15. [Screenshots](https://github.com/zufuliu/notepad4/wiki/Screenshots#python)
-	* [PHP Script](tools/lang/PHP.php), up to PHP 8.5. [Screenshots](https://github.com/zufuliu/notepad4/wiki/Screenshots#php)
-	* Windows Rescouce Script
-	* [R](tools/lang/R.r), up to R 4.2.
-	* [REBOL](tools/lang/Rebol.r) 3 and [Red](tools/lang/Red.red)
-	* [Ruby](tools/lang/Ruby.rb), up to Ruby 4.1 [Screenshots](https://github.com/zufuliu/notepad4/wiki/Screenshots#ruby)
-	* [Rust](tools/lang/Rust.rs), up to Rust 1.91. [Screenshots](https://github.com/zufuliu/notepad4/wiki/Screenshots#rust)
-	* [SAS](tools/lang/SAS.sas), up to SAS Viya 2024.06.
-	* [Scala](tools/lang/Scala.scala), up to Scala 3.2.
-	* Shell Script
-		* [Bash](tools/lang/Bash.sh) likes (sh, bash, dash, ash, zsh, ksh), up to Bash 5.3. [Screenshots](https://github.com/zufuliu/notepad4/wiki/Screenshots#shell-script)
-		* [C Shell](tools/lang/CShell.csh) (csh, tcsh), up to tcsh 6.24.
-		* [M4 Macro](https://www.gnu.org/software/m4/) and [Autoconf](https://www.gnu.org/software/autoconf/)
-	* SQL Query
-		* [SQL Standard](tools/lang/SQL.sql), up to SQL:2016.
-		* [MySQL](tools/lang/MySQL.sql), up to MySQL 8.0, MariaDB 10.9.
-		* [SQLite3](tools/lang/SQLite3.sql), up to 3.44.
-		* [PostgreSQL](tools/lang/PostgreSQL.sql), PostgreSQL 14.
-		* [Transact-SQL](tools/lang/Transact-SQL.sql), SQL Server 2019.
-		* [Oracle](tools/lang/Oracle.sql), Oracle 20, incomplete.
-	* [Swift](tools/lang/Swift.swift), up to Swift 6.2.
-	* TCL, [Screenshots](https://github.com/zufuliu/notepad4/wiki/Screenshots#tcl)
-	* [Texinfo](tools/lang/Texinfo.texi), up to Texinfo 7.3.
-	* [TOML File](https://toml.io/)
-	* [TypeScript](tools/lang/TypeScript.ts), up to TypeScript 7.0.
-	* [Typst](tools/lang/Typst.typ), up to Typst 0.14.
-	* Visual Basic, [VB.NET](tools/lang/VB.NET.vb), [VB 6.0 and VBA](tools/lang/VBA.bas)
-	* [VBScript](tools/lang/VBScript.vbs)
-	* [VHDL](tools/lang/VHDL.vhdl), up to VHDL 2019.
-	* Verilog HDL, up to [Verilog](tools/lang/Verilog.v) 2005 and [SystemVerilog](tools/lang/SystemVerilog.sv) 2017.
-	* [Vim Script](tools/lang/Vim.vim)
-	* [WebAssembly](https://github.com/WebAssembly/wabt/blob/main/src/lexer-keywords.txt), up to wabt 1.0.
-	* [WinHex Script](tools/lang/WinHex.whs) and template, up to WinHex 20.9.
-	* [XML Document](tools/lang/XML.xml), [Screenshots](https://github.com/zufuliu/notepad4/wiki/Screenshots#xml)
-		* [XML Schema](https://www.w3.org/XML/Schema)
-		* [XML Stylesheet](https://www.w3.org/Style/XSL/)
-		* SGML and DTD
-		* Apple Property List
-		* [SVG](https://www.w3.org/TR/SVG2/)
-	* [YAML Document](https://yaml.org/)
-	* [Zig](tools/lang/Zig.zig), up to Zig 0.13.
-	* Many Others
-* Toggle fold for specific level, shortcuts: <kbd>Alt</kbd>+<kbd>Number</kbd>
-* Toggle fold for current block without scrolling back to the block start line, shortcut: <kbd>Alt</kbd>+<kbd>C</kbd>, or context menu "Toggle Fold"
-* Improved support for Chinese, Japanese and Korean: inline mode IME, word wrapping, word selection, case conversions, etc.
-* Insert new GUID and current timestamps
-* Number conversion between decimal, hexadecimal, octal and binary
-* Display caret location and length of selected text in count of characters
-* Improved regex support with [Boost regex library](https://www.boost.org/doc/libs/release/libs/regex/doc/html/boost_regex/syntax/perl_syntax.html)
-* Improved support for NFO ANSI art
-* Support various [Windows system integration](https://github.com/zufuliu/notepad4/wiki/System-Integration)
-* Support high DPI display with HD version
-* Support rendering using Direct2D DirectWrite, and switch between GDI and Direct2D
-* Support font ligature with font like [FiraCode](https://github.com/tonsky/FiraCode) in Direct2D mode
-* Support color font (Windows 8.1 and above) in Direct2D mode, useful to display color [Emoji](https://unicode.org/emoji/charts/full-emoji-list.html) 😊 and others
-* Experimental support for RTL layout (GDI) and bidirectional (Direct2D), useful for Arabic and Hebrew
-* Support using fractional font size
-* Support full screen mode
-* Support compress & pretty for CSS, JavaScript, JSON and JSON5
-* Support copy as RTF
-* Support evaluate expression
-* Support text transliteration
-* Support URL highlighting
-* Support drag and drop file from Visual Studio, Android Studio, IntelliJ IDEA, etc.
-* Other various major or minor changes and tweaks
+## 本分支新增的功能
 
-## Supported Operating Systems:
-* Windows Vista, 7, 8, 8.1, 10 and 11, both 32-bit and 64-bit
-* Windows Server 2008, 2012, 2016, 2019, 2022 and 2025, both 32-bit and 64-bit
-* Windows 10 and 11 on ARM64
-* Windows XP, Windows Server 2003 and Windows 8/8.1 on ARM32 (Windows RT) using [v25.06r5696](https://github.com/zufuliu/notepad4/releases/tag/v25.06r5696)
-* Other systems using [Wine](https://www.winehq.org/)
+1. **多标签页**
+   - 顶部标签栏，显示文件名与未保存标记 `*`
+   - `Ctrl+Tab` / `Ctrl+Shift+Tab` 切换，`Ctrl+W` 关闭，`Ctrl+N` 新建
+   - 每个标签独立保存内容、撤销历史、光标、滚动位置、编码、换行符、只读状态
+   - File 菜单：Close Tab / Close All Tabs / Open in New Window
+   - 工具栏：关闭当前标签、在新窗口中打开
+2. **垂直滚动条上的匹配标记**
+   - “标记全部匹配”或“查找全部”时，在真正的垂直滚动条上按行位置画出标记
+   - 滚动时标记保持可见
+   - Settings → Scroll Mark Settings 可设置颜色与不透明度，保存在 ini 中
+3. **只从新窗口打开**
+   - Settings 中的勾选项，勾选后新建与打开文件都在新窗口中打开
+   - 立即生效并写入配置，重启后保持
+4. **在新窗口中打开（移动语义）**
+   - 把当前标签的文件移动到新窗口，原标签随即关闭
+   - 未保存的内容也能一起带过去：通过临时文件中转，**不会**写回原文件，
+     也不会弹出保存对话框
+   - 新窗口中的副本显示为未命名文档，保存时会要求选择文件名
 
-## Contributors:
-* [XhmikosR](https://xhmikosr.github.io/notepad2-mod/)
-* [Kai Liu](https://code.kliu.org/misc/notepad2/)
-* [RL Vision](https://www.rlvision.com/notepad2/about.asp)
-* Aleksandar Lekov
-* Bruno Barbieri
-* Homam
-* Everyone else on [GitHub](https://github.com/zufuliu/notepad4/graphs/contributors) and on Notepad2-mod's [Contributor List](https://github.com/XhmikosR/notepad2-mod/graphs/contributors)
+## ⚠️ 关于 AI 的声明
 
-## More information:
-* [Florian's Notepad2 website](https://www.flos-freeware.ch/notepad2.html)
-* [XhmikosR's Notepad2-mod website](https://xhmikosr.github.io/notepad2-mod/)
-* [Scintilla's website](https://www.scintilla.org/)
-* [Build Notepad4 and matepath](https://github.com/zufuliu/notepad4/wiki/Build-Notepad4)
-* [Localization](https://github.com/zufuliu/notepad4/wiki/Localization)
-	* [Deutsch](https://github.com/zufuliu/notepad4/tree/main/locale/de) by [@xelsios](https://github.com/xelsios)
-	* [French](https://github.com/zufuliu/notepad4/tree/main/locale/fr) by [@VoilierBleu](https://github.com/VoilierBleu)
-	* [Italiano](https://github.com/zufuliu/notepad4/tree/main/locale/it) by [@Matteo-Nigro](https://github.com/Matteo-Nigro)
-	* [Polish](https://github.com/zufuliu/notepad4/tree/main/locale/pl) by [@kbabol](https://github.com/kbabol) and [@miroslaw-zylewicz](https://github.com/miroslaw-zylewicz)
-	* [Português (Brasil)](https://github.com/zufuliu/notepad4/tree/main/locale/pt-BR) by [@DAVIDVS-PR1MVS](https://github.com/DAVIDVS-PR1MVS)
-	* [Русский](https://github.com/zufuliu/notepad4/tree/main/locale/ru) by [@tretdm](https://github.com/tretdm) and [@Dimmitrius](https://github.com/Dimmitrius)
-	* [日本語](https://github.com/zufuliu/notepad4/tree/main/locale/ja) by [@maboroshin](https://github.com/maboroshin)
-	* [中文 (繁體)](https://github.com/zufuliu/notepad4/tree/main/locale/zh-Hant)
-	* [中文 (简体)](https://github.com/zufuliu/notepad4/tree/main/locale/zh-Hans)
-	* [한국어](https://github.com/zufuliu/notepad4/tree/main/locale/ko) by [@VenusGirl](https://github.com/VenusGirl)
-	* [한국어](https://teus.me/Notepad4) by [@bluenlive](https://github.com/bluenlive)
-* [Notepad4 Wiki](https://github.com/zufuliu/notepad4/wiki)
+**本项目的代码改动主要由 AI（大型语言模型）生成，并经人工审阅与自动化测试验证。**
+
+这意味着：
+
+- 代码风格、实现方式可能与上游项目不一致
+- 可能存在未被测试覆盖的边界问题
+- 不建议在关键生产环境中替代上游 Notepad4 而不做额外验证
+- 欢迎指出问题，但请理解维护者不是所有代码的原始作者
+
+如果你需要最稳定、经过长期检验的版本，请使用上游 Notepad4。
+
+## 反馈问题前请先区分责任
+
+提交 issue 前，**请先确认上游 Notepad4 是否也存在同样的问题**：
+
+1. 从 <https://github.com/zufuliu/notepad4/releases> 下载最新官方 Notepad4
+2. 用同样的步骤复现一次
+3. 按下表判断应该提交到哪里：
+
+| 现象 | 提交位置 |
+| --- | --- |
+| 官方 Notepad4 也能复现（语法高亮、编码、打印、词法分析等） | 上游 <https://github.com/zufuliu/notepad4/issues> |
+| 只在 Notepad4-ML 出现（标签、滚动条标记、新窗口相关） | 本项目 issue |
+| 不确定 | 先在本项目 issue 中说明“官方版本是否复现” |
+
+请在 issue 中写明：
+
+- Notepad4-ML 版本（关于对话框中的 `0.1` 及基于的上游版本）
+- Windows 版本
+- 复现步骤
+- 是否已在官方 Notepad4 上复现
+
+## 下载与使用
+
+Release 中提供 64 位构建：
+
+| 文件 | 说明 |
+| --- | --- |
+| `Notepad4-ML.exe` | 主程序（多标签版本） |
+| `matepath.exe` | 上游附带的文件浏览器插件 |
+| `locale/<lang>/Notepad4-ML.dll` | 界面语言资源（可选，按需放） |
+| `LICENSE` | 许可证 |
+
+建议解压到同一目录使用。`locale` 目录可选，缺少时界面为英文。
+
+支持的语言：英语、简体中文、繁体中文、日语、韩语、德语、法语、意大利语、
+波兰语、葡萄牙语（巴西）、俄语、斯洛文尼亚语。
+
+## 配置文件
+
+配置文件为 `Notepad4-ML.ini`，与上游的 `Notepad4.ini` 分开存放，
+因此两个版本可以共存而不互相干扰。
+
+- 便携模式：ini 在 exe 同目录
+- 非便携模式：`%LOCALAPPDATA%\Notepad4-ML\Notepad4-ML.ini`
+
+## 从源码构建
+
+本分支使用 zig + LLVM-MinGW 工具链构建（脚本不在本仓库内）。
+上游原始的构建方式（MSVC / MinGW Makefile）依然可用，见
+[上游 Wiki](https://github.com/zufuliu/notepad4/wiki/Build-Notepad4)。
+
+上游项目依赖：Scintilla 5.6.7、Lexilla 5.5.4、Boost.Regex 1.91。
+
+## 已知限制
+
+- 切换标签会丢失代码折叠的展开状态（文本、撤销、书签保留）
+- 标签栏使用标准 Win32 Tab 控件，没有标签上的关闭按钮，暗色主题下为亮色
+- 工具栏的两个新增按钮图标为程序绘制的占位图形
+- 斯洛文尼亚语（sl）语言包在上游本身就只翻译了一部分
+
+## 许可证
+
+BSD 3-Clause。本分支保留上游全部版权声明，详见 [LICENSE](LICENSE)。
+
+上游 Notepad4、matepath、Notepad2、Notepad2-mod 的版权归各自作者所有。

@@ -661,7 +661,7 @@ static inline LPCWSTR GetStyleThemeFilePath() noexcept {
 static inline void FindDarkThemeFile(LPWSTR lpszIniFile) noexcept {
 	// relative to program ini file
 	lstrcpy(lpszIniFile, szIniFile);
-	lstrcpy(PathFindFileName(lpszIniFile), L"Notepad4 DarkTheme.ini");
+	lstrcpy(PathFindFileName(lpszIniFile), WC_NOTEPAD4 L" DarkTheme.ini");
 }
 
 void Style_LoadTabSettings(LPCEDITLEXER pLex) noexcept {

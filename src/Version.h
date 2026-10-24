@@ -18,8 +18,11 @@
 #define DO_STRINGIFY(x)		TEXT(#x)
 #define STRINGIFY(x)		DO_STRINGIFY(x)
 
-#define MY_APPNAME					L"Notepad4"
-#define MY_APPNAME_DESCRIPTION		L"Notepad4 Text Editor"
+#define MY_APPNAME					L"Notepad4-ML"
+#define MY_APPNAME_DESCRIPTION		L"Notepad4-MultiLabel Text Editor"
+// version of the upstream project this fork is based on
+#define MY_UPSTREAM_VERSION			L"Notepad4 v26.10 (r6392, 7b269f54)"
+#define MY_UPSTREAM_COMMIT			L"3afea94b18c469b95b504553a5ece1a9e4c57d9e"
 #define VERSION_FILEVERSION_NUM		VERSION_MINOR,VERSION_BUILD_NUM,0,VERSION_REV
 #define VERSION_FILEVERSION			STRINGIFY(VERSION_MINOR) "." \
 									STRINGIFY(VERSION_BUILD) "." STRINGIFY(VERSION_REV)

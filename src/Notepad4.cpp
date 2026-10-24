@@ -68,12 +68,12 @@ static HICON hTrayIcon = nullptr;
 static UINT uTrayIconDPI = 0;
 
 #define TOOLBAR_COMMAND_BASE	IDT_FILE_NEW
-#define DefaultToolbarButtons	L"22 3 0 1 27 2 0 4 18 19 0 5 6 0 7 8 9 20 0 10 11 0 12 0 24 0 13 14 0 15 16 0 17"
+#define DefaultToolbarButtons	L"22 3 0 1 27 2 0 4 18 19 0 5 6 0 7 8 9 20 0 10 11 0 12 0 24 0 13 14 0 15 16 0 29 28 0 17"
 // NOLINTBEGIN(readability-redundant-zero-initializer)
 #if NP2_ENABLE_CUSTOMIZE_TOOLBAR_LABELS
 static TBBUTTON tbbMainWnd[] =
 #else
-static const TBBUTTON tbbMainWnd[] =
+static TBBUTTON tbbMainWnd[] =
 #endif
 {
 	{0, 	0, 					0, 				 TBSTYLE_SEP, {0}, 0, 0},
@@ -104,6 +104,9 @@ static const TBBUTTON tbbMainWnd[] =
 	{24, 	IDT_FILE_LAUNCH, 	TBSTATE_ENABLED, TBSTYLE_BUTTON, {0}, 0, 0},
 	{25, 	IDT_VIEW_ALWAYSONTOP, 	TBSTATE_ENABLED, TBSTYLE_BUTTON, {0}, 0, 0},
 	{26, 	IDT_FILE_NEWWINDOW, 	TBSTATE_ENABLED, TBSTYLE_BUTTON, {0}, 0, 0},
+	// bitmap indices are assigned at runtime, see CreateBars()
+	{27, 	IDT_FILE_CLOSE, 		TBSTATE_ENABLED, TBSTYLE_BUTTON, {0}, 0, 0},
+	{28, 	IDT_FILE_OPENNEWWINDOW, TBSTATE_ENABLED, TBSTYLE_BUTTON, {0}, 0, 0},
 };
 // NOLINTEND(readability-redundant-zero-initializer)
 
@@ -141,6 +144,9 @@ int		iZoomLevel = 100;
 bool	bShowBookmarkMargin;
 static bool bShowLineNumbers;
 static int bMarkOccurrences;
+// color of the match marks painted on the vertical scrollbar; CLR_INVALID means system highlight color
+COLORREF crScrollMarkColor = CLR_INVALID;
+int	iScrollMarkOpacity = 60;	// 0-100 percent
 int	iChangeHistoryMarker;
 EditAutoCompletionConfig autoCompletionConfig;
 int iSelectOption;
@@ -179,6 +185,10 @@ int		iPrintColor;
 int		iPrintZoom = 100;
 RECT	pageSetupMargin;
 static bool bSaveBeforeRunningTools;
+// when enabled, opening a file starts a new window instead of a new tab
+static bool bOpenFileInNewWindow = false;
+// set by -unsaved: the loaded content came from another window's unsaved document
+static bool flagUnsavedTransfer = false;
 bool bOpenFolderWithMatepath;
 FileWatchingMode iFileWatchingMode;
 int iFileWatchingOption;
@@ -403,6 +413,52 @@ static bool	flagDisplayHelp			= false;
 static inline bool IsDocumentModified() noexcept {
 	return bDocumentModified || iCurrentEncoding != iOriginalEncoding;
 }
+
+//==== Editor Tabs ============================================================
+#define MAX_EDITOR_TABS 64
+
+struct EditorTab {
+	HANDLE doc;
+	WCHAR szPath[MAX_PATH];
+	EditFileVars fileVars;
+	PEDITLEXER pLexer;
+	int iEncoding;
+	int iOriginalEncoding;
+	int iEolMode;
+	int iZoom;
+	bool bReadOnlyMode;
+	bool bReadOnlyFile;
+	bool bModified;
+	Sci_Position iCaret;
+	Sci_Position iAnchor;
+	Sci_Line iTopLine;
+	int iXOffset;
+	WCHAR szTitleExcerpt[128];
+};
+
+static EditorTab editorTabs[MAX_EDITOR_TABS];
+static int iTabCount = 0;
+static int iTabCurrent = -1;
+static HWND hwndTabBar = nullptr;
+static bool bTabBarUpdating = false;
+static HFONT hTabBarFont = nullptr;
+
+static void TabBarCreate(HWND hwnd) noexcept;
+static void TabBarUpdateFont() noexcept;
+static void TabBarUpdate() noexcept;
+static void TabBarResize(int cx, int &y, int &cy) noexcept;
+static void TabSyncCurrent() noexcept;
+static bool TabSwitchTo(int index) noexcept;
+static bool TabNew() noexcept;
+static bool TabClose(int index) noexcept;
+static void TabCloseMoved() noexcept;
+static void TabInitFirst() noexcept;
+static bool TabAskSaveAll() noexcept;
+static bool FileLoadInTab(LPCWSTR lpszFile);
+static BOOL LaunchInNewWindow(HWND hwnd, LPCWSTR lpszFile) noexcept;
+static BOOL LaunchNewWindow(HWND hwnd, bool emptyWindow) noexcept;
+static bool SaveDocumentToTempFile(LPWSTR pszPath, int cchPath) noexcept;
+static void DetachTransferredDocument(LPCWSTR pszTempFile) noexcept;
 
 static inline bool IsTopMost() noexcept {
 	return (bAlwaysOnTop || flagAlwaysOnTop == TripleBoolean_True) && flagAlwaysOnTop != TripleBoolean_False;
@@ -871,6 +927,7 @@ void InitInstance(HINSTANCE hInstance, int nCmdShow) {
 
 	UpdateStatusBarCache(StatusItem_OvrMode);
 	UpdateStatusBarCache(StatusItem_Zoom);
+	TabInitFirst();
 	bool bOpened = false;
 	bool bFileLoadCalled = false;
 	// Pathname parameter
@@ -886,8 +943,14 @@ void InitInstance(HINSTANCE hInstance, int nCmdShow) {
 				bFileLoadCalled = true;
 			}
 		} else {
-			bOpened = FileLoad(FileLoadFlag_Default, lpFileArg);
+			bOpened = FileLoadInTab(lpFileArg);
 			bFileLoadCalled = bOpened;
+			if (bOpened && flagUnsavedTransfer) {
+				// the content belongs to another window: detach it from the temp file
+				WCHAR szTempFile[MAX_PATH];
+				lstrcpyn(szTempFile, lpFileArg, COUNTOF(szTempFile));
+				DetachTransferredDocument(szTempFile);
+			}
 		}
 		NP2HeapFree(lpFileArg);
 
@@ -1025,7 +1088,9 @@ static inline void NP2RestoreWind(HWND hwnd) noexcept {
 }
 
 static inline void ExitApplication(HWND hwnd) {
-	if (FileSave(FileSaveFlag_Ask)) {
+	// TabAskSaveAll() walks through every tab (including the current one) and asks to save
+	// the modified ones, so calling FileSave() again here would ask twice.
+	if (TabAskSaveAll()) {
 		DestroyWindow(hwnd);
 	}
 }
@@ -1068,10 +1133,16 @@ void MsgDropFiles(HWND hwnd, UINT umsg, WPARAM wParam) {
 		if (PathIsDirectory(path)) {
 			WCHAR tchFile[MAX_PATH];
 			if (OpenFileDlg(tchFile, COUNTOF(tchFile), path)) {
-				FileLoad(FileLoadFlag_Default, tchFile);
+				if (bOpenFileInNewWindow) {
+					LaunchInNewWindow(hwndMain, tchFile);
+				} else {
+					FileLoadInTab(tchFile);
+				}
 			}
+		} else if (bOpenFileInNewWindow) {
+			LaunchInNewWindow(hwndMain, path);
 		} else {
-			FileLoad(FileLoadFlag_Default, path);
+			FileLoadInTab(path);
 		}
 	}
 	DragFinish(hDrop);
@@ -1206,6 +1277,7 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT umsg, WPARAM wParam, LPARAM lParam)
 		// TODO: detect system theme and high contrast mode changes
 		SendMessage(hwndEdit, WM_SETTINGCHANGE, wParam, lParam);
 		Style_SetLexer(pLexCurrent, false); // override base elements
+		TabBarUpdateFont();
 		break;
 
 	case WM_SYSCOLORCHANGE:
@@ -1646,6 +1718,7 @@ void UpdateWindowTitle() noexcept {
 	lstrcat(szTitle, szAppName);
 
 	SetWindowText(hwndMain, szTitle);
+	TabSyncCurrent();
 }
 
 static inline void UpdateDocumentModificationStatus() noexcept {
@@ -1717,6 +1790,7 @@ void EditCreate(HWND hwndParent) noexcept {
 						  nullptr);
 	hwndEdit = hwnd;
 	InitScintillaHandle(hwnd);
+	EditInitScrollMarks(hwnd);
 	//SciInitThemes(hwnd);
 	if (bEditLayoutRTL) {
 		SetWindowLayoutRTL(hwnd, true);
@@ -1791,6 +1865,8 @@ void EditCreate(HWND hwndParent) noexcept {
 	// Margins
 	SciCall_SetMarginSensitive(MarginNumber_Bookmark, true);
 	SciCall_SetMarginCursor(MarginNumber_Bookmark, SC_CURSORARROW);
+	// marker used only as data for painting match positions on the vertical scrollbar
+	SciCall_MarkerDefine(MarkerNumber_ScrollMark, SC_MARK_EMPTY);
 	SciCall_SetMarginType(MarginNumber_CodeFolding, SC_MARGIN_SYMBOL);
 	SciCall_SetMarginMask(MarginNumber_CodeFolding, SC_MASK_FOLDERS);
 	SciCall_SetMarginSensitive(MarginNumber_CodeFolding, true);
@@ -1856,6 +1932,7 @@ LRESULT MsgCreate(HWND hwnd, WPARAM wParam, LPARAM lParam) noexcept {
 
 	// Create Toolbar and Statusbar
 	CreateBars(hwnd, hInstance);
+	TabBarCreate(hwnd);
 
 	// Window Initialization
 
@@ -1890,6 +1967,113 @@ LRESULT MsgCreate(HWND hwnd, WPARAM wParam, LPARAM lParam) noexcept {
 // CreateBars() - Create Toolbar and Statusbar
 //
 //
+// Draw a toolbar glyph into a 32-bit DIB, so that the extra tab buttons do not
+// need a matching bitmap resource.
+//  kind 0: close (X), kind 1: open in new window (two overlapping frames)
+static HBITMAP CreateToolbarGlyphBitmap(int size, int kind) noexcept {
+	BITMAPV5HEADER bi = {};
+	bi.bV5Size = sizeof(bi);
+	bi.bV5Width = size;
+	bi.bV5Height = -size;
+	bi.bV5Planes = 1;
+	bi.bV5BitCount = 32;
+	bi.bV5Compression = BI_BITFIELDS;
+	bi.bV5RedMask = 0x00FF0000;
+	bi.bV5GreenMask = 0x0000FF00;
+	bi.bV5BlueMask = 0x000000FF;
+	bi.bV5AlphaMask = 0xFF000000;
+
+	void *bits = nullptr;
+	HDC hdc = CreateCompatibleDC(nullptr);
+	HBITMAP hbmp = CreateDIBSection(hdc, reinterpret_cast<BITMAPINFO *>(&bi), DIB_RGB_COLORS, &bits, nullptr, 0);
+	DeleteDC(hdc);
+	if (!hbmp || !bits) {
+		return nullptr;
+	}
+
+		auto *pixels = static_cast<uint32_t *>(bits);
+	memset(pixels, 0, static_cast<size_t>(size) * size * sizeof(uint32_t));
+	const COLORREF rgb = GetSysColor(COLOR_BTNTEXT);
+	const uint32_t color = (0xFFu << 24) | (static_cast<uint32_t>(GetRValue(rgb)) << 16)
+		| (static_cast<uint32_t>(GetGValue(rgb)) << 8) | GetBValue(rgb);
+
+	const int inset = max(3, size / 4);
+	const int thickness = max(1, size / 10);
+	if (kind == 1) {
+		// two overlapping frames: the new window in front of the current one
+		const int a = max(2, size / 8);
+		const int frame = size - 1 - a;
+		const int gap = max(1, size / 4);
+		const int backLeft = a;
+		const int backTop = a;
+		const int backRight = frame - gap;
+		const int backBottom = frame - gap;
+		const int frontLeft = a + gap;
+		const int frontTop = a + gap;
+		const int frontRight = frame;
+		const int frontBottom = frame;
+		for (int t = 0; t < thickness; t++) {
+			// frame of the back window (top and left edges only, to suggest depth)
+			for (int x = backLeft; x <= backRight; x++) {
+				const int y = backTop + t;
+				if (x >= 0 && x < size && y < size) {
+					pixels[y * size + x] = color;
+				}
+			}
+			for (int y = backTop; y <= backBottom; y++) {
+				const int x = backLeft + t;
+				if (x < size && y < size) {
+					pixels[y * size + x] = color;
+				}
+			}
+			// frame of the front window
+			for (int x = frontLeft; x <= frontRight; x++) {
+				for (int y = frontTop + t; y <= frontBottom; y++) {
+					if (y != frontTop + t && y != frontBottom - t) {
+						continue;
+					}
+					if (x >= 0 && x < size && y < size) {
+						pixels[y * size + x] = color;
+					}
+				}
+			}
+			for (int y = frontTop; y <= frontBottom; y++) {
+				for (int x = frontLeft + t; x <= frontRight; x++) {
+					if (x != frontLeft + t && x != frontRight - t) {
+						continue;
+					}
+					if (x < size && y < size) {
+						pixels[y * size + x] = color;
+					}
+				}
+			}
+		}
+		return hbmp;
+	}
+
+	const int span = size - 1 - 2 * inset;
+	for (int i = 0; i <= span; i++) {
+		const int x1 = inset + i;
+		const int x2 = size - 1 - inset - i;
+		const int y = inset + i;
+		for (int dx = 0; dx < thickness; dx++) {
+			for (int dy = 0; dy < thickness; dy++) {
+				const int px = x1 + dx;
+				const int py = y + dy;
+				if (px < size && py < size) {
+					pixels[py * size + px] = color;
+				}
+				const int px2 = x2 - dx;
+				if (px2 >= 0 && py < size) {
+					pixels[py * size + px2] = color;
+				}
+			}
+		}
+	}
+
+	return hbmp;
+}
+
 void CreateBars(HWND hwnd, HINSTANCE hInstance) noexcept {
 	constexpr DWORD dwToolbarStyle = WS_TOOLBAR;
 	hwndToolbar = CreateWindowEx(0, TOOLBARCLASSNAME, nullptr, dwToolbarStyle,
@@ -1922,6 +2106,16 @@ void CreateBars(HWND hwnd, HINSTANCE hInstance) noexcept {
 	GetObject(hbmp, sizeof(BITMAP), &bmp);
 	HIMAGELIST himl = ImageList_Create(bmp.bmHeight, bmp.bmHeight, ILC_COLOR32 | ILC_MASK, 0, 0);
 	ImageList_AddMasked(himl, hbmp, CLR_DEFAULT);
+	// append the extra tab glyphs and use their real indices for the buttons
+	for (int i = 0; i < 2; i++) {
+		if (HBITMAP hglyph = CreateToolbarGlyphBitmap(bmp.bmHeight, i)) {
+			const int glyphIndex = ImageList_Add(himl, hglyph, nullptr);
+			if (glyphIndex >= 0) {
+				tbbMainWnd[COUNTOF(tbbMainWnd) - 2 + i].iBitmap = glyphIndex;
+			}
+			DeleteObject(hglyph);
+		}
+	}
 	SendMessage(hwndToolbar, TB_SETIMAGELIST, 0, AsInteger<LPARAM>(himl));
 
 	if (internalBitmap) {
@@ -1934,6 +2128,12 @@ void CreateBars(HWND hwnd, HINSTANCE hInstance) noexcept {
 		if (fProcessed) {
 			himl = ImageList_Create(bmp.bmHeight, bmp.bmHeight, ILC_COLOR32 | ILC_MASK, 0, 0);
 			ImageList_AddMasked(himl, hbmpCopy, CLR_DEFAULT);
+			for (int i = 0; i < 2; i++) {
+				if (HBITMAP hglyph = CreateToolbarGlyphBitmap(bmp.bmHeight, i)) {
+					ImageList_Add(himl, hglyph, nullptr);
+					DeleteObject(hglyph);
+				}
+			}
 			SendMessage(hwndToolbar, TB_SETDISABLEDIMAGELIST, 0, AsInteger<LPARAM>(himl));
 		}
 		DeleteObject(hbmpCopy);
@@ -1968,6 +2168,34 @@ void CreateBars(HWND hwnd, HINSTANCE hInstance) noexcept {
 	section.Free();
 #endif // NP2_ENABLE_CUSTOMIZE_TOOLBAR_LABELS
 
+	//  Toolbar tooltips for the tab-only buttons: they have no menu item, so the
+	//  toolbar cannot derive a name by itself. The texts come from the string
+	//  table of the loaded resources, so they follow the UI language.
+	{
+		struct ButtonText { int idCommand; int idText; LPCWSTR fallback; };
+		static const ButtonText buttonTexts[] = {
+			{IDT_FILE_CLOSE, IDT_FILE_CLOSE, L"Close Tab (Ctrl+W)"},
+			{IDT_FILE_OPENNEWWINDOW, IDT_FILE_OPENNEWWINDOW, L"Open in New Window"},
+		};
+		HINSTANCE hRes = hResDLL ? hResDLL : g_exeInstance;
+		for (const ButtonText &bt : buttonTexts) {
+			LRESULT index = SendMessage(hwndToolbar, TB_ADDSTRING, AsInteger<WPARAM>(hRes),
+				AsInteger<LPARAM>(MAKEINTRESOURCE(bt.idText)));
+			if (index < 0) {
+				// string table of the resource DLL is out of date, fall back to English
+				index = SendMessage(hwndToolbar, TB_ADDSTRING,
+					AsInteger<WPARAM>(hInstance), AsInteger<LPARAM>(bt.fallback));
+			}
+			if (index < 0) {
+				continue;
+			}
+			for (UINT i = 0; i < COUNTOF(tbbMainWnd); i++) {
+				if (tbbMainWnd[i].idCommand == bt.idCommand) {
+					tbbMainWnd[i].iString = static_cast<INT_PTR>(index);
+				}
+			}
+		}
+	}
 	SendMessage(hwndToolbar, TB_SETEXTENDEDSTYLE, 0,
 				SendMessage(hwndToolbar, TB_GETEXTENDEDSTYLE, 0, 0) | TBSTYLE_EX_MIXEDBUTTONS | TBSTYLE_EX_DRAWDDARROWS);
 
@@ -2041,6 +2269,7 @@ void MsgDPIChanged(HWND hwnd, WPARAM wParam, LPARAM lParam) noexcept {
 	bitmapCache.Invalidate();
 	// recreate toolbar and statusbar
 	RecreateBars(hwnd, g_hInstance);
+	TabBarUpdateFont();
 	const int cx = rc->right - rc->left;
 	const int cy = rc->bottom - rc->top;
 	SetWindowPos(hwnd, nullptr, rc->left, rc->top, cx, cy, SWP_NOZORDER | SWP_NOACTIVATE);
@@ -2136,6 +2365,8 @@ void MsgSize(HWND hwnd, WPARAM wParam, LPARAM lParam) noexcept {
 		GetWindowRect(hwndStatus, &rc);
 		cy -= (rc.bottom - rc.top);
 	}
+
+	TabBarResize(cx, y, cy);
 
 	SetWindowPos(hwndEdit, nullptr, x, y, cx, cy, SWP_NOZORDER | SWP_NOACTIVATE);
 
@@ -2604,6 +2835,7 @@ void MsgInitMenu(HWND hwnd, WPARAM wParam, LPARAM lParam) noexcept {
 
 	CheckCmd(hmenu, IDM_VIEW_NOSAVERECENT, bSaveRecentFiles);
 	CheckCmd(hmenu, IDM_VIEW_NOSAVEFINDREPL, bSaveFindReplace);
+	CheckCmd(hmenu, IDM_SET_OPENFILEINNEWWINDOW, bOpenFileInNewWindow);
 	CheckCmd(hmenu, IDM_VIEW_SAVEBEFORERUNNINGTOOLS, bSaveBeforeRunningTools);
 	CheckCmd(hmenu, IDM_SET_OPEN_FOLDER_MATEPATH, bOpenFolderWithMatepath);
 
@@ -2662,12 +2894,53 @@ LRESULT MsgCommand(HWND hwnd, WPARAM wParam, LPARAM lParam) {
 	switch (LOWORD(wParam)) {
 	case IDT_FILE_NEW:
 	case IDM_FILE_NEW:
-		FileLoad(FileLoadFlag_New, L"");
+		// when "Always Open in New Window" is enabled, creating a document starts a new window
+		if (bOpenFileInNewWindow) {
+			LaunchNewWindow(hwnd, true);
+		} else {
+			TabNew();
+		}
 		break;
 
 	case IDT_FILE_OPEN:
 	case IDM_FILE_OPEN:
-		FileLoad(FileLoadFlag_Default, L"");
+		if (bOpenFileInNewWindow) {
+			WCHAR tchFile[MAX_PATH];
+			SetStrEmpty(tchFile);
+			if (OpenFileDlg(tchFile, COUNTOF(tchFile), nullptr)) {
+				LaunchInNewWindow(hwnd, tchFile);
+			}
+		} else {
+			FileLoadInTab(L"");
+		}
+		break;
+
+	case IDT_FILE_CLOSE:
+	case IDM_FILE_CLOSE:
+		TabClose(iTabCurrent);
+		break;
+
+	case IDM_FILE_CLOSEALL:
+		while (iTabCount > 1) {
+			if (!TabClose(iTabCurrent)) {
+				break;
+			}
+		}
+		if (iTabCount == 1) {
+			TabClose(0);
+		}
+		break;
+
+	case IDM_TAB_NEXT:
+		if (iTabCount > 1) {
+			TabSwitchTo((iTabCurrent + 1) % iTabCount);
+		}
+		break;
+
+	case IDM_TAB_PREV:
+		if (iTabCount > 1) {
+			TabSwitchTo((iTabCurrent + iTabCount - 1) % iTabCount);
+		}
 		break;
 
 	case IDM_FILE_REVERT:
@@ -2750,34 +3023,24 @@ LRESULT MsgCommand(HWND hwnd, WPARAM wParam, LPARAM lParam) {
 		break;
 
 	case IDM_FILE_NEWWINDOW:
-	case IDM_FILE_NEWWINDOW2:
 	case IDT_FILE_NEWWINDOW:
+		LaunchNewWindow(hwnd, true);
+		break;
+
+	case IDM_FILE_NEWWINDOW2:
+	case IDT_FILE_OPENNEWWINDOW:
+		// move the file of the current tab to a new window: the content is handed
+		// over, so the source tab is closed without asking to save again
+		if (LaunchNewWindow(hwnd, false)) {
+			TabCloseMoved();
+		}
+		break;
+
 	case IDM_FILE_RESTART: {
-		const bool emptyWind = LOWORD(wParam) == IDM_FILE_NEWWINDOW || LOWORD(wParam) == IDT_FILE_NEWWINDOW;
-		if (!emptyWind && bSaveBeforeRunningTools && !FileSave(FileSaveFlag_Ask)) {
+		if (bSaveBeforeRunningTools && !FileSave(FileSaveFlag_Ask)) {
 			break;
 		}
-
-		WCHAR szModuleName[MAX_PATH];
-		GetModuleFileName(nullptr, szModuleName, COUNTOF(szModuleName));
-		LPWSTR szParameters = static_cast<LPWSTR>(NP2HeapAlloc(sizeof(WCHAR) * 1024));
-		const RelaunchOption option = emptyWind ? static_cast<RelaunchOption>(RelaunchOption_NewWindow | RelaunchOption_EmptyWindow) : RelaunchOption_NewWindow;
-		GetRelaunchParameters(szParameters, szCurFile, option);
-
-		SHELLEXECUTEINFO sei;
-		memset(&sei, 0, sizeof(SHELLEXECUTEINFO));
-		sei.cbSize = sizeof(SHELLEXECUTEINFO);
-		sei.fMask = SEE_MASK_NOZONECHECKS;
-		sei.hwnd = hwnd;
-		sei.lpVerb = nullptr;
-		sei.lpFile = szModuleName;
-		sei.lpParameters = szParameters;
-		sei.lpDirectory = g_wchWorkingDirectory;
-		sei.nShow = SW_SHOWNORMAL;
-
-		const BOOL result = ShellExecuteEx(&sei);
-		NP2HeapFree(szParameters);
-		if (result && LOWORD(wParam) == IDM_FILE_RESTART) {
+		if (LaunchNewWindow(hwnd, false)) {
 			DestroyWindow(hwnd);
 		}
 	}
@@ -3843,6 +4106,12 @@ LRESULT MsgCommand(HWND hwnd, WPARAM wParam, LPARAM lParam) {
 		}
 		break;
 
+	case IDM_VIEW_SCROLLMARKSETTINGS:
+		if (ScrollMarkSettingsDlg(hwnd)) {
+			EditInvalidateScrollMarks();
+		}
+		break;
+
 	case IDM_VIEW_LONGLINESETTINGS:
 		if (LongLineSettingsDlg(hwnd)) {
 			bMarkLongLines = true;
@@ -4279,6 +4548,12 @@ LRESULT MsgCommand(HWND hwnd, WPARAM wParam, LPARAM lParam) {
 		bSaveBeforeRunningTools = !bSaveBeforeRunningTools;
 		break;
 
+	case IDM_SET_OPENFILEINNEWWINDOW:
+		bOpenFileInNewWindow = !bOpenFileInNewWindow;
+		// apply immediately and persist, so the setting survives a restart
+		IniSetBoolEx(INI_SECTION_NAME_SETTINGS, L"OpenFileInNewWindow", bOpenFileInNewWindow, false);
+		break;
+
 	case IDM_SET_OPEN_FOLDER_MATEPATH:
 		bOpenFolderWithMatepath = !bOpenFolderWithMatepath;
 		break;
@@ -4421,11 +4696,15 @@ LRESULT MsgCommand(HWND hwnd, WPARAM wParam, LPARAM lParam) {
 		break;
 
 	case CMD_CTRLTAB:
-		SciCall_SetTabIndents(false);
-		SciCall_SetUseTabs(true);
-		SciCall_Tab();
-		SciCall_SetUseTabs(!fvCurFile.bTabsAsSpaces);
-		SciCall_SetTabIndents(fvCurFile.bTabIndents);
+		if (iTabCount > 1) {
+			TabSwitchTo((iTabCurrent + 1) % iTabCount);
+		} else {
+			SciCall_SetTabIndents(false);
+			SciCall_SetUseTabs(true);
+			SciCall_Tab();
+			SciCall_SetUseTabs(!fvCurFile.bTabsAsSpaces);
+			SciCall_SetTabIndents(fvCurFile.bTabIndents);
+		}
 		break;
 
 	case CMD_RECODEDEFAULT:
@@ -4647,6 +4926,12 @@ LRESULT MsgNotify(HWND hwnd, WPARAM wParam, LPARAM lParam) {
 	const SCNotification * const scn = AsPointer<SCNotification *>(lParam);
 
 	switch (pnmh->idFrom) {
+	case IDC_TABBAR:
+		if (!bTabBarUpdating && pnmh->code == TCN_SELCHANGE) {
+			TabSwitchTo(TabCtrl_GetCurSel(hwndTabBar));
+		}
+		break;
+
 	case IDC_EDIT:
 		switch (pnmh->code) {
 		case SCN_UPDATEUI: {
@@ -5222,6 +5507,16 @@ void LoadSettings() noexcept {
 	bShowCodeFolding = section.GetBool(L"ShowCodeFolding", true);
 	iChangeHistoryMarker = section.GetInt(L"ChangeHistoryMarker", SC_CHANGE_HISTORY_DISABLED);
 	bMarkOccurrences = section.GetInt(L"MarkOccurrences", MarkOccurrences_Enable);
+	crScrollMarkColor = CLR_INVALID;
+	{
+		WCHAR szColor[16];
+		section.GetString(L"ScrollMarkColor", L"", szColor);
+		int iColor;
+		if (szColor[0] == L'#' && HexStrToInt(szColor + 1, &iColor)) {
+			crScrollMarkColor = RGB((iColor >> 16) & 0xFF, (iColor >> 8) & 0xFF, iColor & 0xFF);
+		}
+	}
+	iScrollMarkOpacity = clamp(section.GetInt(L"ScrollMarkOpacity", 60), 0, 100);
 
 	bViewWhiteSpace = section.GetBool(L"ViewWhiteSpace", false);
 	bViewEOLs = section.GetBool(L"ViewEOLs", false);
@@ -5267,6 +5562,7 @@ void LoadSettings() noexcept {
 	pageSetupMargin.bottom = max(iValue, -1);
 
 	bSaveBeforeRunningTools = section.GetBool(L"SaveBeforeRunningTools", false);
+	bOpenFileInNewWindow = section.GetBool(L"OpenFileInNewWindow", false);
 	bOpenFolderWithMatepath = section.GetBool(L"OpenFolderWithMatepath", true);
 
 	iValue = section.GetInt(L"FileWatchingMode", FileWatchingMode_AutoReload);
@@ -5498,6 +5794,12 @@ void SaveSettings(bool bSaveSettingsNow) noexcept {
 	section.SetBoolEx(L"ShowCodeFolding", bShowCodeFolding, true);
 	section.SetIntEx(L"ChangeHistoryMarker", iChangeHistoryMarker, SC_CHANGE_HISTORY_DISABLED);
 	section.SetIntEx(L"MarkOccurrences", bMarkOccurrences, MarkOccurrences_Enable);
+	if (crScrollMarkColor != CLR_INVALID) {
+		WCHAR szColor[16];
+		wsprintf(szColor, L"#%02X%02X%02X", GetRValue(crScrollMarkColor), GetGValue(crScrollMarkColor), GetBValue(crScrollMarkColor));
+		section.SetStringEx(L"ScrollMarkColor", szColor, L"");
+	}
+	section.SetIntEx(L"ScrollMarkOpacity", iScrollMarkOpacity, 60);
 	section.SetBoolEx(L"ViewWhiteSpace", bViewWhiteSpace, false);
 	section.SetBoolEx(L"ViewEOLs", bViewEOLs, false);
 	section.SetIntEx(L"ShowCallTip", static_cast<int>(callTipInfo.showCallTip), ShowCallTip_None);
@@ -5527,6 +5829,7 @@ void SaveSettings(bool bSaveSettingsNow) noexcept {
 	section.SetIntEx(L"PrintMarginBottom", pageSetupMargin.bottom, -1);
 
 	section.SetBoolEx(L"SaveBeforeRunningTools", bSaveBeforeRunningTools, false);
+	section.SetBoolEx(L"OpenFileInNewWindow", bOpenFileInNewWindow, false);
 	section.SetBoolEx(L"OpenFolderWithMatepath", bOpenFolderWithMatepath, true);
 
 	section.SetIntEx(L"FileWatchingMode", iFileWatchingMode, FileWatchingMode_AutoReload);
@@ -6107,6 +6410,10 @@ CommandParseState ParseCommandLineOption(LPWSTR lp1, LPWSTR lp2) noexcept {
 		} else if (StrStartsWithCase(opt, L"UNICODE")) {
 			opt += CSTRLEN(L"UNICODE");
 			state = ParseCommandLineEncoding(opt);
+		} else if (StrStartsWithCase(opt, L"UNSAVED")) {
+			// the file argument holds content copied from another window's unsaved document
+			flagUnsavedTransfer = true;
+			state = CommandParseState_Consumed;
 		}
 		break;
 	}
@@ -6320,14 +6627,14 @@ void FindIniFile() noexcept {
 			portable = false;
 			PathCombine(appData, pszPath, WC_NOTEPAD4);
 			lstrcpy(lpszIniFile, appData);
-			PathAppend(lpszIniFile, L"Notepad4.ini");
+			PathAppend(lpszIniFile, WC_NOTEPAD4 L".ini");
 			CoTaskMemFree(pszPath);
 		}
 	}
 
 	if (portable) {
 		memcpy(lpszIniFile, tchModule, nameIndex*sizeof(WCHAR));
-		lstrcpy(&lpszIniFile[nameIndex], L"Notepad4.ini");
+		lstrcpy(&lpszIniFile[nameIndex], WC_NOTEPAD4 L".ini");
 	}
 	WIN32_FILE_ATTRIBUTE_DATA data;
 	BOOL success = GetFileAttributesEx(lpszIniFile, GetFileExInfoStandard, &data);
@@ -6337,15 +6644,15 @@ void FindIniFile() noexcept {
 		}
 		WCHAR source[MAX_PATH];
 		memcpy(source, tchModule, nameIndex*sizeof(WCHAR));
-		lstrcpy(&source[nameIndex], L"Notepad4.ini-default");
+		lstrcpy(&source[nameIndex], WC_NOTEPAD4 L".ini-default");
 		CopyFile(source, lpszIniFile, TRUE);
 
 		if (portable) {
 			memcpy(appData, source, nameIndex*sizeof(WCHAR));
 			appData[nameIndex] = L'\0';
 		}
-		lstrcpy(&source[nameIndex], L"Notepad4 DarkTheme.ini-default");
-		PathAppend(appData, L"Notepad4 DarkTheme.ini");
+		lstrcpy(&source[nameIndex], WC_NOTEPAD4 L" DarkTheme.ini-default");
+		PathAppend(appData, WC_NOTEPAD4 L" DarkTheme.ini");
 		CopyFile(source, appData, TRUE);
 		success = GetFileAttributesEx(lpszIniFile, GetFileExInfoStandard, &data);
 	}
@@ -7024,6 +7331,323 @@ bool FileLoad(FileLoadFlag loadFlag, LPCWSTR lpszFile) {
 
 //=============================================================================
 //
+// Editor tabs
+//
+static int TabBarHeight() noexcept {
+	if (hwndTabBar && hTabBarFont && hTabBarFont != GetStockObject(DEFAULT_GUI_FONT)) {
+		HDC hdc = GetDC(hwndTabBar);
+		if (hdc) {
+			HGDIOBJ hOld = SelectObject(hdc, hTabBarFont);
+			TEXTMETRIC tm;
+			const bool ok = GetTextMetrics(hdc, &tm) != 0;
+			SelectObject(hdc, hOld);
+			ReleaseDC(hwndTabBar, hdc);
+			if (ok) {
+				return tm.tmHeight + MulDiv(6, static_cast<int>(g_uCurrentDPI), USER_DEFAULT_SCREEN_DPI);
+			}
+		}
+	}
+	return MulDiv(24, static_cast<int>(g_uCurrentDPI), USER_DEFAULT_SCREEN_DPI);
+}
+
+// Use the system menu font so that tab labels look identical to the menu bar.
+static void TabBarUpdateFont() noexcept {
+	if (!hwndTabBar) {
+		return;
+	}
+	HFONT hOld = hTabBarFont;
+	HFONT hFont = nullptr;
+	NONCLIENTMETRICS ncm = {};
+	ncm.cbSize = sizeof(ncm);
+	if (SystemParametersInfo(SPI_GETNONCLIENTMETRICS, sizeof(ncm), &ncm, 0)) {
+		hFont = CreateFontIndirect(&ncm.lfMenuFont);
+	}
+	if (!hFont) {
+		hFont = static_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT));
+	}
+	hTabBarFont = hFont;
+	SendMessage(hwndTabBar, WM_SETFONT, reinterpret_cast<WPARAM>(hFont), TRUE);
+	if (hOld && hOld != GetStockObject(DEFAULT_GUI_FONT)) {
+		DeleteObject(hOld);
+	}
+	if (bInitDone && hwndMain) {
+		// the tab bar height depends on the font, so relayout the client area
+		RECT rc;
+		GetClientRect(hwndMain, &rc);
+		SendMessage(hwndMain, WM_SIZE, SIZE_RESTORED, MAKELPARAM(rc.right, rc.bottom));
+	}
+}
+
+static void TabBarCreate(HWND hwnd) noexcept {
+	hwndTabBar = CreateWindowEx(0, WC_TABCONTROL, nullptr,
+		WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS | TCS_FOCUSNEVER | TCS_HOTTRACK,
+		0, 0, 0, 0, hwnd, AsPointer<HMENU, ULONG_PTR>(IDC_TABBAR), g_exeInstance, nullptr);
+	if (hwndTabBar) {
+		TabBarUpdateFont();
+	}
+}
+
+static void TabBarResize(int cx, int &y, int &cy) noexcept {
+	if (!hwndTabBar) {
+		return;
+	}
+	const int cyTab = TabBarHeight();
+	SetWindowPos(hwndTabBar, nullptr, 0, y, cx, cyTab, SWP_NOZORDER | SWP_NOACTIVATE);
+	y += cyTab;
+	cy -= cyTab;
+	if (cy < 0) {
+		cy = 0;
+	}
+}
+
+static void TabBarItemText(int index, LPWSTR szName, int cchName) noexcept {
+	if (StrNotEmpty(editorTabs[index].szPath)) {
+		lstrcpyn(szName, PathFindFileName(editorTabs[index].szPath), cchName);
+	} else {
+		wsprintf(szName, L"Untitled %d", index + 1);
+	}
+	if (editorTabs[index].bModified) {
+		lstrcat(szName, L" *");
+	}
+}
+
+static void TabBarUpdate() noexcept {
+	if (!hwndTabBar) {
+		return;
+	}
+	bTabBarUpdating = true;
+	TabCtrl_DeleteAllItems(hwndTabBar);
+	WCHAR szName[MAX_PATH + 16];
+	for (int i = 0; i < iTabCount; i++) {
+		TabBarItemText(i, szName, COUNTOF(szName));
+		TCITEMW item = {};
+		item.mask = TCIF_TEXT;
+		item.pszText = szName;
+		TabCtrl_InsertItem(hwndTabBar, i, &item);
+	}
+	TabCtrl_SetCurSel(hwndTabBar, iTabCurrent);
+	bTabBarUpdating = false;
+	InvalidateRect(hwndTabBar, nullptr, TRUE);
+}
+
+static void TabSaveCurrent() noexcept {
+	if (iTabCurrent < 0 || iTabCurrent >= iTabCount) {
+		return;
+	}
+	EditorTab &tab = editorTabs[iTabCurrent];
+	tab.bModified = IsDocumentModified();
+	tab.iCaret = SciCall_GetCurrentPos();
+	tab.iAnchor = SciCall_GetAnchor();
+	tab.iTopLine = SciCall_GetFirstVisibleLine();
+	tab.iXOffset = SciCall_GetXOffset();
+	tab.iZoom = iZoomLevel;
+	tab.bReadOnlyMode = bReadOnlyMode;
+	tab.bReadOnlyFile = bReadOnlyFile;
+	tab.iEncoding = iCurrentEncoding;
+	tab.iOriginalEncoding = iOriginalEncoding;
+	tab.iEolMode = iCurrentEOLMode;
+	tab.pLexer = pLexCurrent;
+	tab.fileVars = fvCurFile;
+	lstrcpyn(tab.szPath, szCurFile, COUNTOF(tab.szPath));
+	lstrcpyn(tab.szTitleExcerpt, szTitleExcerpt, COUNTOF(tab.szTitleExcerpt));
+}
+
+static void TabSyncCurrent() noexcept {
+	if (iTabCurrent < 0 || iTabCurrent >= iTabCount) {
+		return;
+	}
+	EditorTab &tab = editorTabs[iTabCurrent];
+	lstrcpyn(tab.szPath, szCurFile, COUNTOF(tab.szPath));
+	tab.bModified = IsDocumentModified();
+	if (hwndTabBar) {
+		WCHAR szName[MAX_PATH + 16];
+		TabBarItemText(iTabCurrent, szName, COUNTOF(szName));
+		TCITEMW item = {};
+		item.mask = TCIF_TEXT;
+		item.pszText = szName;
+		bTabBarUpdating = true;
+		TabCtrl_SetItem(hwndTabBar, iTabCurrent, &item);
+		bTabBarUpdating = false;
+	}
+}
+
+static void TabRestoreCurrent() noexcept {
+	const EditorTab &tab = editorTabs[iTabCurrent];
+	fvCurFile = tab.fileVars;
+	pLexCurrent = tab.pLexer;
+	iCurrentEncoding = tab.iEncoding;
+	iOriginalEncoding = tab.iOriginalEncoding;
+	iCurrentEOLMode = tab.iEolMode;
+	bReadOnlyMode = tab.bReadOnlyMode;
+	bReadOnlyFile = tab.bReadOnlyFile;
+	bDocumentModified = tab.bModified;
+	iZoomLevel = tab.iZoom;
+	lstrcpyn(szCurFile, tab.szPath, COUNTOF(szCurFile));
+	lstrcpyn(szTitleExcerpt, tab.szTitleExcerpt, COUNTOF(szTitleExcerpt));
+	SciCall_SetZoom(tab.iZoom);
+	SciCall_SetReadOnly(tab.bReadOnlyMode);
+	SciCall_SetEOLMode(tab.iEolMode);
+	fvCurFile.Apply();
+	SetDlgItemText(hwndMain, IDC_FILENAME, szCurFile);
+	SciCall_SetSel(tab.iAnchor, tab.iCaret);
+	SciCall_SetFirstVisibleLine(tab.iTopLine);
+	SciCall_SetXOffset(tab.iXOffset);
+	UpdateLineNumberWidth();
+	UpdateBookmarkMarginWidth();
+	cachedStatusItem.updateMask = (1 << StatusItem_ItemCount) - 1;
+	UpdateStatusbar();
+	UpdateWindowTitle();
+	UpdateToolbar();
+	InstallFileWatching(false);
+}
+
+static bool TabSwitchTo(int index) noexcept {
+	if (index < 0 || index >= iTabCount || index == iTabCurrent) {
+		return false;
+	}
+	TabSaveCurrent();
+	iTabCurrent = index;
+	SciCall_SetDocPointer(editorTabs[index].doc);
+	TabRestoreCurrent();
+	TabBarUpdate();
+	return true;
+}
+
+static bool TabNew() noexcept {
+	if (iTabCount >= MAX_EDITOR_TABS) {
+		return false;
+	}
+	TabSaveCurrent();
+	HANDLE doc = SciCall_CreateDocument(0, 0);
+	if (!doc) {
+		return false;
+	}
+	SciCall_SetDocPointer(doc);
+	const int index = iTabCount;
+	editorTabs[index] = {};
+	editorTabs[index].doc = doc;
+	editorTabs[index].iEncoding = iDefaultEncoding;
+	editorTabs[index].iOriginalEncoding = iDefaultEncoding;
+	editorTabs[index].iEolMode = GetScintillaEOLMode(iDefaultEOLMode);
+	editorTabs[index].iZoom = iZoomLevel;
+	editorTabs[index].pLexer = pLexCurrent;
+	iTabCount = index + 1;
+	iTabCurrent = index;
+	FileLoad(static_cast<FileLoadFlag>(FileLoadFlag_DontSave | FileLoadFlag_New), L"");
+	TabSyncCurrent();
+	TabBarUpdate();
+	return true;
+}
+
+static bool TabClose(int index) noexcept {
+	if (index < 0 || index >= iTabCount) {
+		return false;
+	}
+	if (index != iTabCurrent && !TabSwitchTo(index)) {
+		return false;
+	}
+	// ask only for unsaved changes of this tab; the answer "No" discards them
+	if (!FileSave(FileSaveFlag_Ask)) {
+		return false;
+	}
+
+	if (iTabCount <= 1) {
+		// the tab was already handled above, destroy the window without asking again
+		DestroyWindow(hwndMain);
+		return true;
+	}
+
+	const HANDLE doc = editorTabs[index].doc;
+	const int next = (index + 1 < iTabCount) ? index + 1 : index - 1;
+	SciCall_SetDocPointer(editorTabs[next].doc);
+	SciCall_ReleaseDocument(doc);
+	for (int i = index; i + 1 < iTabCount; i++) {
+		editorTabs[i] = editorTabs[i + 1];
+	}
+	iTabCount--;
+	iTabCurrent = (next > index) ? next - 1 : next;
+	TabRestoreCurrent();
+	TabBarUpdate();
+	return true;
+}
+
+static void TabCloseMoved() noexcept {
+	if (iTabCurrent < 0 || iTabCurrent >= iTabCount) {
+		return;
+	}
+	if (iTabCount <= 1) {
+		// the only tab was moved to the new window, close this window silently
+		bDocumentModified = false;
+		DestroyWindow(hwndMain);
+		return;
+	}
+
+	const int index = iTabCurrent;
+	const HANDLE doc = editorTabs[index].doc;
+	const int next = (index + 1 < iTabCount) ? index + 1 : index - 1;
+	SciCall_SetDocPointer(editorTabs[next].doc);
+	SciCall_ReleaseDocument(doc);
+	for (int i = index; i + 1 < iTabCount; i++) {
+		editorTabs[i] = editorTabs[i + 1];
+	}
+	iTabCount--;
+	iTabCurrent = (next > index) ? next - 1 : next;
+	TabRestoreCurrent();
+	TabBarUpdate();
+}
+
+static void TabInitFirst() noexcept {
+	if (iTabCount != 0) {
+		return;
+	}
+	editorTabs[0] = {};
+	editorTabs[0].doc = AsPointer<HANDLE>(SciCall(SCI_GETDOCPOINTER, 0, 0));
+	SciCall(SCI_ADDREFDOCUMENT, 0, AsInteger<LPARAM>(editorTabs[0].doc));
+	editorTabs[0].pLexer = pLexCurrent;
+	editorTabs[0].iEncoding = iCurrentEncoding;
+	editorTabs[0].iOriginalEncoding = iOriginalEncoding;
+	editorTabs[0].iEolMode = iCurrentEOLMode;
+	editorTabs[0].iZoom = iZoomLevel;
+	iTabCount = 1;
+	iTabCurrent = 0;
+	TabSaveCurrent();
+	TabBarUpdate();
+}
+
+static bool TabAskSaveAll() noexcept {
+	const int current = iTabCurrent;
+	for (int i = 0; i < iTabCount; i++) {
+		if (i != iTabCurrent) {
+			TabSwitchTo(i);
+		}
+		if (!FileSave(FileSaveFlag_Ask)) {
+			if (current >= 0 && current < iTabCount) {
+				TabSwitchTo(current);
+			}
+			return false;
+		}
+	}
+	if (current >= 0 && current < iTabCount) {
+		TabSwitchTo(current);
+	}
+	return true;
+}
+
+static bool FileLoadInTab(LPCWSTR lpszFile) {
+	if (iTabCount == 0) {
+		TabInitFirst();
+	}
+	const bool bEmpty = iTabCurrent >= 0 && StrIsEmpty(szCurFile) && !IsDocumentModified() && SciCall_GetLength() == 0;
+	if (!bEmpty && !TabNew()) {
+		return false;
+	}
+	const bool bLoaded = FileLoad(FileLoadFlag_Default, lpszFile);
+	TabSyncCurrent();
+	return bLoaded;
+}
+
+//=============================================================================
+//
 // FileSave()
 //
 //
@@ -7534,6 +8158,204 @@ bool RelaunchMultiInst() noexcept {
 		NP2HeapFree(lpFileList[i]);
 	}
 	return false;
+}
+
+//=============================================================================
+//
+// LaunchNewWindow()
+//
+//  Start a new Notepad4 process showing the current document (or an empty one).
+//  Encoding, lexer and read-only state of the current document are carried over.
+//
+//
+//=============================================================================
+//
+// SaveDocumentToTempFile()
+//
+//  Write the document to a temporary file in UTF-16 (with BOM) form, so that
+//  another process can pick up content that was never saved.
+//  FileSaveFlag_SaveCopy keeps EditSaveFile() from resetting the save point,
+//  so the document stays marked as modified.
+//
+static bool SaveDocumentToTempFile(LPWSTR pszPath, int cchPath) noexcept {
+	WCHAR szTempDir[MAX_PATH];
+	const DWORD cchDir = GetTempPath(COUNTOF(szTempDir), szTempDir);
+	if (cchDir == 0 || cchDir >= COUNTOF(szTempDir)) {
+		return false;
+	}
+
+	WCHAR szName[64];
+	wsprintf(szName, L"Notepad4-%u-%u.tmp", GetCurrentProcessId(), GetTickCount());
+	WCHAR szFile[MAX_PATH];
+	if (!PathCombine(szFile, szTempDir, szName)) {
+		return false;
+	}
+	lstrcpyn(pszPath, szFile, cchPath);
+
+	EditFileIOStatus status{};
+	// UTF-16 keeps every character and is recognised by the reading process.
+	status.iEncoding = CPI_UNICODEBOM;
+	status.iEOLMode = iCurrentEOLMode;
+
+	// FileIO() refreshes the read-only flag for the file it touches; keep ours.
+	const bool bReadOnlyFileSaved = bReadOnlyFile;
+	const bool ok = FileIO(false, pszPath,
+		static_cast<FileSaveFlag>(FileSaveFlag_SaveCopy | FileSaveFlag_EndSession), status);
+	bReadOnlyFile = bReadOnlyFileSaved;
+
+	if (!ok) {
+		DeleteFile(pszPath);
+		pszPath[0] = L'\0';
+	}
+	return ok;
+}
+
+//=============================================================================
+//
+// DetachTransferredDocument()
+//
+//  The window was started with -unsaved: the loaded text came from another
+//  window's unsaved document. Delete the hand-over file and turn the tab into
+//  an untitled, still modified document, so saving asks for a new file name.
+//
+static void DetachTransferredDocument(LPCWSTR pszTempFile) noexcept {
+	flagUnsavedTransfer = false;
+
+	// stop watching the hand-over file before removing it
+	InstallFileWatching(true);
+	DeleteFile(pszTempFile);
+
+	SetStrEmpty(szCurFile);
+	SetDlgItemText(hwndMain, IDC_FILENAME, szCurFile);
+	bReadOnlyFile = false;
+	bReadOnlyMode = false;
+	SciCall_SetReadOnly(false);
+	bDocumentModified = true;
+
+	TabSyncCurrent();
+	UpdateWindowTitle();
+	UpdateToolbar();
+	UpdateStatusbar();
+}
+
+//=============================================================================
+//
+// LaunchNewWindow()
+//
+//  Start a new Notepad4 process showing the current document (or an empty one).
+//  Unsaved content is handed over through a temporary file; the current tab is
+//  left untouched and keeps its unsaved state.
+//
+//
+static BOOL LaunchNewWindow(HWND hwnd, bool emptyWindow) noexcept {
+	WCHAR szTempFile[MAX_PATH];
+	SetStrEmpty(szTempFile);
+	bool unsavedTransfer = false;
+	if (!emptyWindow && IsDocumentModified()) {
+		if (!SaveDocumentToTempFile(szTempFile, COUNTOF(szTempFile))) {
+			MsgBoxWarn(MB_OK, IDS_ERR_SAVEFILE, szTempFile);
+			return FALSE;
+		}
+		unsavedTransfer = true;
+	}
+
+	WCHAR szModuleName[MAX_PATH];
+	GetModuleFileName(nullptr, szModuleName, COUNTOF(szModuleName));
+	LPWSTR szParameters = static_cast<LPWSTR>(NP2HeapAlloc(sizeof(WCHAR) * 2048));
+	const RelaunchOption option = emptyWindow
+		? static_cast<RelaunchOption>(RelaunchOption_NewWindow | RelaunchOption_EmptyWindow)
+		: RelaunchOption_NewWindow;
+	GetRelaunchParameters(szParameters, unsavedTransfer ? szTempFile : szCurFile, option);
+
+	if (unsavedTransfer) {
+		// options must come before the file name: prepend the switch
+		static constexpr WCHAR szSwitch[] = L"-unsaved ";
+		constexpr int cchSwitch = COUNTOF(szSwitch) - 1;
+		const size_t cchParams = lstrlen(szParameters) + 1;
+		MoveMemory(szParameters + cchSwitch, szParameters, cchParams * sizeof(WCHAR));
+		MoveMemory(szParameters, szSwitch, cchSwitch * sizeof(WCHAR));
+	}
+
+	SHELLEXECUTEINFO sei;
+	memset(&sei, 0, sizeof(SHELLEXECUTEINFO));
+	sei.cbSize = sizeof(SHELLEXECUTEINFO);
+	sei.fMask = SEE_MASK_NOZONECHECKS;
+	sei.hwnd = hwnd;
+	sei.lpVerb = nullptr;
+	sei.lpFile = szModuleName;
+	sei.lpParameters = szParameters;
+	sei.lpDirectory = g_wchWorkingDirectory;
+	sei.nShow = SW_SHOWNORMAL;
+
+	const BOOL result = ShellExecuteEx(&sei);
+	NP2HeapFree(szParameters);
+	if (!result && unsavedTransfer) {
+		DeleteFile(szTempFile);
+	}
+	return result;
+}
+
+//=============================================================================
+//
+// LaunchInNewWindow()
+//
+//  Start a new Notepad4 process with its own window showing lpszFile.
+//
+//
+static BOOL LaunchInNewWindow(HWND hwnd, LPCWSTR lpszFile) noexcept {
+	WCHAR szModuleName[MAX_PATH];
+	GetModuleFileName(nullptr, szModuleName, COUNTOF(szModuleName));
+
+	constexpr size_t cchMax = MAX_PATH * 2 + 128;
+	LPWSTR szParameters = static_cast<LPWSTR>(NP2HeapAlloc(sizeof(WCHAR) * cchMax));
+
+	WCHAR tch[64];
+	wsprintf(tch, L"-appid=\"%s\"", g_wchAppUserModelID);
+	lstrcpy(szParameters, tch);
+	// -n: never reuse the current window, always create a new one
+	wsprintf(tch, L" -sysmru=%i -n", (flagUseSystemMRU == TripleBoolean_True));
+	lstrcat(szParameters, tch);
+
+	WINDOWPLACEMENT wndpl;
+	wndpl.length = sizeof(WINDOWPLACEMENT);
+	GetWindowPlacement(hwndMain, &wndpl);
+
+	HMONITOR hMonitor = MonitorFromRect(&wndpl.rcNormalPosition, MONITOR_DEFAULTTONEAREST);
+	MONITORINFO mi;
+	mi.cbSize = sizeof(mi);
+	GetMonitorInfo(hMonitor, &mi);
+
+	int x = wndpl.rcNormalPosition.left + 10;
+	int y = wndpl.rcNormalPosition.top + 10;
+	const int cx = wndpl.rcNormalPosition.right - wndpl.rcNormalPosition.left;
+	const int cy = wndpl.rcNormalPosition.bottom - wndpl.rcNormalPosition.top;
+	if ((x + cx) > mi.rcWork.right || (y + cy) > mi.rcWork.bottom) {
+		x = mi.rcMonitor.left;
+		y = mi.rcMonitor.top;
+	}
+	wsprintf(tch, L" -pos %i,%i,%i,%i,%i", x, y, cx, cy, IsZoomed(hwndMain));
+	lstrcat(szParameters, tch);
+
+	if (StrNotEmpty(lpszFile)) {
+		lstrcat(szParameters, L" \"");
+		lstrcat(szParameters, lpszFile);
+		lstrcat(szParameters, L"\"");
+	}
+
+	SHELLEXECUTEINFO sei;
+	memset(&sei, 0, sizeof(SHELLEXECUTEINFO));
+	sei.cbSize = sizeof(SHELLEXECUTEINFO);
+	sei.fMask = SEE_MASK_NOZONECHECKS;
+	sei.hwnd = hwnd;
+	sei.lpVerb = nullptr;
+	sei.lpFile = szModuleName;
+	sei.lpParameters = szParameters;
+	sei.lpDirectory = g_wchWorkingDirectory;
+	sei.nShow = SW_SHOWNORMAL;
+
+	const BOOL result = ShellExecuteEx(&sei);
+	NP2HeapFree(szParameters);
+	return result;
 }
 
 void GetRelaunchParameters(LPWSTR szParameters, LPCWSTR lpszFile, RelaunchOption option) noexcept {

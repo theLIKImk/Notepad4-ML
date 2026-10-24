@@ -150,6 +150,8 @@ enum {
 
 void	Edit_ReleaseResources() noexcept;
 void	EditCreate(HWND hwndParent) noexcept;
+void	EditInitScrollMarks(HWND hwnd) noexcept;
+void	EditInvalidateScrollMarks() noexcept;
 void	EditSetNewText(LPCSTR lpstrText, DWORD cbText, size_t lineCount) noexcept;
 
 static inline void EditSetEmptyText() noexcept{
@@ -285,6 +287,7 @@ void	EditFormatCode(int menu) noexcept;
 
 enum {
 	MarkerNumber_Bookmark = 0,
+	MarkerNumber_ScrollMark = 1,
 
 	// [0, INDICATOR_CONTAINER) are reserved for lexer.
 	IndicatorNumber_MarkOccurrence = INDICATOR_CONTAINER + 0,
@@ -297,6 +300,7 @@ enum {
 	MarginNumber_CodeFolding = 2,
 
 	MarkerBitmask_Bookmark = 1 << MarkerNumber_Bookmark,
+	MarkerBitmask_ScrollMark = 1 << MarkerNumber_ScrollMark,
 };
 
 enum {
@@ -320,6 +324,7 @@ struct EditMarkAll {
 	Sci_Position lastMatchPos;	// last matching position
 	Sci_Position prevStopPos;	// previous stop position
 	Sci_Line prevBookmarkLine;	// previous bookmark line
+	Sci_Line prevScrollMarkLine;	// previous line marked on the vertical scrollbar
 	StopWatch watch;			// used to dynamic compute increment size
 
 	void Reset(UINT findFlag, Sci_Position iSelCount, LPSTR text) noexcept;
