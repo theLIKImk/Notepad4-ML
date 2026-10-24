@@ -115,6 +115,9 @@ BEGIN
 		MENUITEM "&New\tCtrl+N",					IDM_FILE_NEW
 		MENUITEM "New &Window\tAlt+N",				IDM_FILE_NEWWINDOW
 		MENUITEM "&Open...\tCtrl+O",				IDM_FILE_OPEN
+		MENUITEM "&Close Tab\tCtrl+W",				IDM_FILE_CLOSE
+		MENUITEM "Close All Tabs",					IDM_FILE_CLOSEALL
+		MENUITEM "Open in New &Window",				IDM_FILE_NEWWINDOW2
 		MENUITEM "&Save\tCtrl+S",					IDM_FILE_SAVE
 		MENUITEM "Save &As...\tF6",					IDM_FILE_SAVEAS
 		MENUITEM "Save Back&up",					IDM_FILE_SAVEBACKUP
@@ -575,9 +578,11 @@ BEGIN
 	POPUP "Sett&ings"
 	BEGIN
 		MENUITEM "Insert Tabs as &Spaces",			IDM_VIEW_TABSASSPACES
+		MENUITEM "Always Open in &New Window",		IDM_SET_OPENFILEINNEWWINDOW
 		MENUITEM "&Tab Settings...\tCtrl+T",		IDM_VIEW_TABSETTINGS
 		MENUITEM "Word &Wrap Settings...",			IDM_VIEW_WORDWRAPSETTINGS
 		MENUITEM "&Long Line Settings...",			IDM_VIEW_LONGLINESETTINGS
+		MENUITEM "Scroll &Mark Settings...",		IDM_VIEW_SCROLLMARKSETTINGS
 		MENUITEM "&Auto Completion Settings...",	IDM_VIEW_AUTOCOMPLETION_SETTINGS
 		MENUITEM "Auto Completion I&gnore Case",	IDM_VIEW_AUTOCOMPLETION_IGNORECASE
 		MENUITEM "Enable LaTe&X Input Method",		IDM_SET_LATEX_INPUT_METHOD
@@ -633,7 +638,7 @@ BEGIN
 				MENUITEM "Italiano",				IDM_LANG_ITALIAN
 				MENUITEM "Polski",					IDM_LANG_POLISH
 				MENUITEM "Português (Brasil)",		IDM_LANG_PORTUGUESE_BRAZIL
-				MENUITEM "Русский",					IDM_LANG_RUSSIAN
+				MENUITEM "Русский",				IDM_LANG_RUSSIAN
 				MENUITEM "Slovenščina",				IDM_LANG_SLOVENIAN
 				MENUITEM "日本語",					IDM_LANG_JAPANESE
 				MENUITEM "한국어",					IDM_LANG_KOREAN
@@ -705,7 +710,7 @@ BEGIN
 			MENUITEM "Use &Inline Mode IME",		IDM_SET_USE_INLINE_IME
 			MENUITEM SEPARATOR
 			MENUITEM "&System Integration...",		IDM_SET_SYSTEM_INTEGRATION
-			MENUITEM "&Open Notepad4.ini\tCtrl+F7",	CMD_OPENINIFILE
+			MENUITEM "&Open Notepad4-ML.ini\tCtrl+F7",	CMD_OPENINIFILE
 		END
 		MENUITEM "Save Settings &On Exit",			IDM_VIEW_SAVESETTINGS
 		MENUITEM "Sa&ve Settings Now\tF7",			IDM_VIEW_SAVESETTINGSNOW
@@ -922,6 +927,7 @@ BEGIN
     "M",            IDM_EDIT_MODIFYLINES,       VIRTKEY, ALT, NOINVERT
     "M",            IDM_VIEW_MARGIN,            VIRTKEY, SHIFT, CONTROL, NOINVERT
     "N",            IDM_FILE_NEW,               VIRTKEY, CONTROL, NOINVERT
+    "W",            IDM_FILE_CLOSE,             VIRTKEY, CONTROL, NOINVERT
     "N",            IDM_FILE_NEWWINDOW,         VIRTKEY, ALT, NOINVERT
     "N",            IDM_VIEW_LINENUMBERS,       VIRTKEY, SHIFT, CONTROL, NOINVERT
     "O",            IDM_FILE_OPEN,              VIRTKEY, CONTROL, NOINVERT
@@ -1035,6 +1041,7 @@ BEGIN
     VK_SUBTRACT,    CMD_DECREASENUM,            VIRTKEY, CONTROL, ALT, NOINVERT
     VK_TAB,         CMD_TAB_COMPLETION,         VIRTKEY, NOINVERT
     VK_TAB,         CMD_CTRLTAB,                VIRTKEY, CONTROL, NOINVERT
+VK_TAB,         IDM_TAB_PREV,               VIRTKEY, SHIFT, CONTROL, NOINVERT
     VK_UP,          IDM_EDIT_MOVELINEUP,        VIRTKEY, ALT, NOINVERT
     "W",            IDM_EDIT_COMPRESSWS,        VIRTKEY, ALT, NOINVERT
     "W",            IDM_FILE_EXIT,              VIRTKEY, CONTROL, NOINVERT
@@ -1390,6 +1397,21 @@ BEGIN
     PUSHBUTTON      "Cancel",IDCANCEL,127,24,50,14
 END
 
+IDD_SCROLLMARK DIALOGEX 0, 0, 210, 62
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Scroll Mark Settings"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    LTEXT           "&Color:",IDC_STATIC,7,12,32,8
+    PUSHBUTTON      "",IDC_SCROLLMARK_COLOR,42,9,64,14
+    PUSHBUTTON      "&Default",IDC_SCROLLMARK_DEFAULTCOLOR,110,9,38,14
+    LTEXT           "&Opacity (%):",IDC_STATIC,7,32,48,8
+    EDITTEXT        IDC_SCROLLMARK_OPACITY,58,30,30,14,ES_NUMBER | ES_AUTOHSCROLL
+    LTEXT           "Marks for find/mark-all matches are painted on the vertical scrollbar.",IDC_STATIC,7,48,196,8
+    DEFPUSHBUTTON   "OK",IDOK,153,9,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,153,26,50,14
+END
+
 IDD_WORDWRAP DIALOGEX 0, 0, 250, 139
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Word Wrap Settings"
@@ -1723,9 +1745,9 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_APPTITLE            "Notepad4"
+    IDS_APPTITLE            "Notepad4-ML"
     IDS_APPTITLE_ELEVATED   "%s (Administrator)"
-    IDS_APPTITLE_PASTEBOARD "Notepad4: Paste Board"
+    IDS_APPTITLE_PASTEBOARD "Notepad4-ML: Paste Board"
     IDS_UNTITLED            "Untitled"
     IDS_TITLEEXCERPT        """%s"""
     IDS_READONLY_FILE       "(Read Only File)"
@@ -1737,7 +1759,7 @@ BEGIN
     IDS_SAVEFILE            "Saving ""%s""..."
     IDS_PRINTFILE           "Printing page %s..."
     IDS_SAVINGSETTINGS      "Saving settings..."
-    IDS_LINKDESCRIPTION     "Edit with Notepad&4"
+    IDS_LINKDESCRIPTION     "Edit with Notepad4-&ML"
     IDS_FILTER_ALL          "All Files (*.*)|*.*|"
     IDS_FILTER_EXE          "Executable Files (*.exe;*.com;*.bat;*.cmd;*.lnk;*.pif)|*.exe;*.com;*.bat;*.cmd;*.lnk;*.pif|All Files (*.*)|*.*|"
 END
@@ -1825,6 +1847,8 @@ BEGIN
     IDT_FILE_LAUNCH         "Execute Document"
     IDT_VIEW_ALWAYSONTOP    "Always On Top"
     IDT_FILE_NEWWINDOW      "New Window"
+    IDT_FILE_CLOSE          "Close Tab (Ctrl+W)"
+    IDT_FILE_OPENNEWWINDOW  "Open in New Window"
 END
 
 STRINGTABLE

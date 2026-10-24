@@ -50,7 +50,7 @@ void StopWatch::Show(LPCWSTR msg) const noexcept {
 	const double elapsed = Get();
 	WCHAR buf[256];
 	swprintf(buf, COUNTOF(buf), L"%s: %.6f", msg, elapsed);
-	MessageBox(nullptr, buf, L"Notepad4", MB_OK);
+	MessageBox(nullptr, buf, L"Notepad4-ML", MB_OK);
 }
 
 void StopWatch::ShowLog(LPCSTR msg) const noexcept {

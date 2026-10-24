@@ -20,7 +20,7 @@
 #pragma once
 
 //==== Main Window ============================================================
-#define WC_NOTEPAD4 L"Notepad4"
+#define WC_NOTEPAD4 L"Notepad4-ML"
 #define MY_APPUSERMODELID	L"Notepad4 Text Editor"
 
 enum TripleBoolean {
@@ -92,6 +92,7 @@ struct NP2PARAMS {
 #define IDC_REBAR			0xFB02
 #define IDC_EDIT			0xFB03
 #define IDC_FILENAME		0xFB05
+#define IDC_TABBAR			0xFB06
 
 // submenu in popup menu, IDR_POPUPMENU
 #define IDP_POPUP_SUBMENU_EDIT	0

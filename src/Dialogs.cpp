@@ -428,7 +428,7 @@ static INT_PTR CALLBACK RunDlgProc(HWND hwnd, UINT umsg, WPARAM wParam, LPARAM l
 					lstrcpy(arg2, wchDirectory);
 				}
 
-				if (StrCaseEqual(arg1, L"Notepad4") || StrCaseEqual(arg1, L"Notepad4.exe")) {
+				if (StrCaseEqual(arg1, WC_NOTEPAD4) || StrCaseEqual(arg1, WC_NOTEPAD4 L".exe")) {
 					GetModuleFileName(nullptr, arg1, COUNTOF(arg1));
 					bQuickExit = true;
 				}
@@ -1337,6 +1337,97 @@ static INT_PTR CALLBACK LongLineSettingsDlgProc(HWND hwnd, UINT umsg, WPARAM wPa
 //
 bool LongLineSettingsDlg(HWND hwnd) noexcept {
 	const INT_PTR iResult = ThemedDialogBoxParam(g_hInstance, MAKEINTRESOURCE(IDD_LONGLINES), hwnd, LongLineSettingsDlgProc, 0);
+	return iResult == IDOK;
+}
+
+//=============================================================================
+//
+// ScrollMarkSettingsDlgProc()
+//
+//
+extern COLORREF crScrollMarkColor;
+extern int iScrollMarkOpacity;
+
+static COLORREF crScrollMarkColorSaved;
+static int iScrollMarkOpacitySaved;
+
+static void SyncScrollMarkColorButton(HWND hwnd) noexcept {
+	WCHAR tch[32];
+	if (crScrollMarkColor == CLR_INVALID) {
+		lstrcpy(tch, L"Default");
+	} else {
+		wsprintf(tch, L"#%02X%02X%02X", GetRValue(crScrollMarkColor), GetGValue(crScrollMarkColor), GetBValue(crScrollMarkColor));
+	}
+	SetDlgItemText(hwnd, IDC_SCROLLMARK_COLOR, tch);
+}
+
+static INT_PTR CALLBACK ScrollMarkSettingsDlgProc(HWND hwnd, UINT umsg, WPARAM wParam, LPARAM lParam) noexcept {
+	UNREFERENCED_PARAMETER(lParam);
+	UNREFERENCED_PARAMETER(lParam);
+
+	switch (umsg) {
+	case WM_INITDIALOG: {
+		crScrollMarkColorSaved = crScrollMarkColor;
+		iScrollMarkOpacitySaved = iScrollMarkOpacity;
+		WCHAR tchOpacity[16];
+		wsprintf(tchOpacity, L"%d", iScrollMarkOpacity);
+		SetDlgItemText(hwnd, IDC_SCROLLMARK_OPACITY, tchOpacity);
+		SendDlgItemMessage(hwnd, IDC_SCROLLMARK_OPACITY, EM_LIMITTEXT, 3, 0);
+		SyncScrollMarkColorButton(hwnd);
+		DarkMode_InitDialog(hwnd);
+	} return TRUE;
+
+	case WM_COMMAND:
+		switch (LOWORD(wParam)) {
+		case IDC_SCROLLMARK_COLOR: {
+			static COLORREF custColors[16] = {};
+			CHOOSECOLORW cc = {};
+			cc.lStructSize = sizeof(cc);
+			cc.hwndOwner = hwnd;
+			cc.rgbResult = (crScrollMarkColor == CLR_INVALID) ? GetSysColor(COLOR_HIGHLIGHT) : crScrollMarkColor;
+			cc.lpCustColors = custColors;
+			cc.Flags = CC_FULLOPEN | CC_RGBINIT;
+			if (ChooseColorW(&cc)) {
+				crScrollMarkColor = cc.rgbResult;
+				SyncScrollMarkColorButton(hwnd);
+			}
+		} break;
+
+		case IDC_SCROLLMARK_DEFAULTCOLOR:
+			crScrollMarkColor = CLR_INVALID;
+			SyncScrollMarkColorButton(hwnd);
+			break;
+
+		case IDOK: {
+			WCHAR tchOpacity[16];
+			GetDlgItemText(hwnd, IDC_SCROLLMARK_OPACITY, tchOpacity, COUNTOF(tchOpacity));
+			int opacity;
+			if (CRTStrToInt(tchOpacity, &opacity)) {
+				iScrollMarkOpacity = clamp(opacity, 0, 100);
+			} else {
+				iScrollMarkOpacity = iScrollMarkOpacitySaved;
+			}
+			EndDialog(hwnd, IDOK);
+		} break;
+
+		case IDCANCEL:
+			crScrollMarkColor = crScrollMarkColorSaved;
+			iScrollMarkOpacity = iScrollMarkOpacitySaved;
+			EndDialog(hwnd, IDCANCEL);
+			break;
+		}
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+//=============================================================================
+//
+// ScrollMarkSettingsDlg()
+//
+bool ScrollMarkSettingsDlg(HWND hwnd) noexcept {
+	const INT_PTR iResult = ThemedDialogBoxParam(g_hInstance, MAKEINTRESOURCE(IDD_SCROLLMARK), hwnd, ScrollMarkSettingsDlgProc, 0);
 	return iResult == IDOK;
 }
 

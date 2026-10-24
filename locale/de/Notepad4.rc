@@ -115,6 +115,9 @@ BEGIN
 		MENUITEM "&Neu\tStrg+N",						IDM_FILE_NEW
 		MENUITEM "Neues Fenste&r\tAlt+N",				IDM_FILE_NEWWINDOW
 		MENUITEM "Ö&ffnen...\tStrg+O",					IDM_FILE_OPEN
+		MENUITEM "Tab schließen(&C)\tStrg+W",		IDM_FILE_CLOSE
+		MENUITEM "Alle Tabs schließen",				IDM_FILE_CLOSEALL
+		MENUITEM "In neuem Fenster öffnen(&W)",		IDM_FILE_NEWWINDOW2
 		MENUITEM "&Speichern\tStrg+S",					IDM_FILE_SAVE
 		MENUITEM "Speichern &unter...\tF6",				IDM_FILE_SAVEAS
 		MENUITEM "Sicherheitskopie &anlegen",			IDM_FILE_SAVEBACKUP
@@ -575,9 +578,11 @@ BEGIN
 	POPUP "&Einstellungen"
 	BEGIN
 		MENUITEM "Tab als &Leerzeichen einfügen",		IDM_VIEW_TABSASSPACES
+		MENUITEM "Immer in neuem Fenster öffnen",	IDM_SET_OPENFILEINNEWWINDOW
 		MENUITEM "&Tab anpassen...\tStrg+T",			IDM_VIEW_TABSETTINGS
 		MENUITEM "Zeilenu&mbruch anpassen...",			IDM_VIEW_WORDWRAPSETTINGS
 		MENUITEM "&Zeilenlänge anpassen...",			IDM_VIEW_LONGLINESETTINGS
+		MENUITEM "Rollenmarkierung anpassen...",		IDM_VIEW_SCROLLMARKSETTINGS
 		MENUITEM "Auto&vervollständigung...",			IDM_VIEW_AUTOCOMPLETION_SETTINGS
 		MENUITEM "Autovervollst. i&gnoriert Groß/Klein",	IDM_VIEW_AUTOCOMPLETION_IGNORECASE
 		MENUITEM "LaTe&X Eingabemethode aktivieren",	IDM_SET_LATEX_INPUT_METHOD
@@ -705,7 +710,7 @@ BEGIN
 			MENUITEM "Inline &IME Modus verwenden",	IDM_SET_USE_INLINE_IME
 			MENUITEM SEPARATOR
 			MENUITEM "&Systemintegration...",			IDM_SET_SYSTEM_INTEGRATION
-			MENUITEM "Öffne &Notepad4.ini\tStrg+F7",	CMD_OPENINIFILE
+			MENUITEM "Öffne &Notepad4-ML.ini\tStrg+F7",	CMD_OPENINIFILE
 		END
 		MENUITEM "Einstellungen beim Beenden &speichern",		IDM_VIEW_SAVESETTINGS
 		MENUITEM "Einstellungen &jetzt speichern\tF7",			IDM_VIEW_SAVESETTINGSNOW
@@ -1071,7 +1076,7 @@ END
 
 IDD_ABOUT DIALOGEX 0, 0, 255, 144
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "Notepad4"
+CAPTION "Notepad4-ML"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     DEFPUSHBUTTON   "OK",IDOK,142,123,50,14
@@ -1390,6 +1395,21 @@ BEGIN
     PUSHBUTTON      "Abbrechen",IDCANCEL,127,24,50,14
 END
 
+IDD_SCROLLMARK DIALOGEX 0, 0, 210, 62
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Rollenmarkierung"
+FONT 9, "Segoe UI", 400, 0, 0x1
+BEGIN
+    LTEXT           "&Farbe:",IDC_STATIC,7,12,32,8
+    PUSHBUTTON      "",IDC_SCROLLMARK_COLOR,42,9,64,14
+    PUSHBUTTON      "&Standard",IDC_SCROLLMARK_DEFAULTCOLOR,110,9,38,14
+    LTEXT           "&Deckkraft (%):",IDC_STATIC,7,32,48,8
+    EDITTEXT        IDC_SCROLLMARK_OPACITY,58,30,30,14,ES_NUMBER | ES_AUTOHSCROLL
+    LTEXT           "Markierungen für Treffer der Suche werden auf der vertikalen Bildlaufleiste gezeichnet.",IDC_STATIC,7,48,196,8
+    DEFPUSHBUTTON   "OK",IDOK,153,9,50,14
+    PUSHBUTTON      "Abbrechen",IDCANCEL,153,26,50,14
+END
+
 IDD_WORDWRAP DIALOGEX 0, 0, 280, 139
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "Zeilenumbruch anpassen"
@@ -1538,7 +1558,7 @@ END
 
 IDD_INFOBOX DIALOGEX 0, 0, 244, 74
 STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
-CAPTION "Notepad4"
+CAPTION "Notepad4-ML"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     LTEXT           "",IDC_INFOBOXRECT,0,0,244,49
@@ -1723,9 +1743,9 @@ END
 
 STRINGTABLE
 BEGIN
-    IDS_APPTITLE            "Notepad4"
+    IDS_APPTITLE            "Notepad4-ML"
     IDS_APPTITLE_ELEVATED   "%s (Administrator)"
-    IDS_APPTITLE_PASTEBOARD "Notepad4: Zwischenablage"
+    IDS_APPTITLE_PASTEBOARD "Notepad4-ML: Zwischenablage"
     IDS_UNTITLED            "Unbenannt"
     IDS_TITLEEXCERPT        """%s"""
     IDS_READONLY_FILE       "(Schreibgeschützt)"
@@ -1825,6 +1845,8 @@ BEGIN
     IDT_FILE_LAUNCH         "Dokument ausführen"
     IDT_VIEW_ALWAYSONTOP    "Immer im Vordergrund"
     IDT_FILE_NEWWINDOW      "Neues Fenster"
+    IDT_FILE_CLOSE          "Tab schließen (Strg+W)"
+    IDT_FILE_OPENNEWWINDOW  "In neuem Fenster öffnen"
 END
 
 STRINGTABLE

@@ -938,8 +938,8 @@ struct IniSectionBuilder {
 	}
 };
 
-#define NP2RegSubKey_ContextMenu	L"*\\shell\\Notepad4"
-#define NP2RegSubKey_JumpList		L"Applications\\Notepad4.exe"
+#define NP2RegSubKey_ContextMenu	L"*\\shell\\Notepad4-ML"
+#define NP2RegSubKey_JumpList		L"Applications\\Notepad4-ML.exe"
 
 template <DWORD cchDest>
 [[nodiscard]] inline bool Registry_GetStringEx(HKEY hKey, LPCWSTR lpSubKey, LPCWSTR valueName, WCHAR (&value)[cchDest], DWORD samDesired = RRF_RT_REG_SZ) noexcept {

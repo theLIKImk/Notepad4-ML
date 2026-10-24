@@ -5461,6 +5461,126 @@ void EditReplace(EditFindReplace &efr) noexcept {
 
 extern EditMarkAll editMarkAll;
 extern HANDLE idleTaskTimer;
+
+//=============================================================================
+//
+// Match marks on the vertical scrollbar
+//
+extern COLORREF crScrollMarkColor;
+extern int iScrollMarkOpacity;
+
+static COLORREF ScrollMarkBlendedColor() noexcept {
+	COLORREF fore = crScrollMarkColor;
+	if (fore == CLR_INVALID) {
+		fore = GetSysColor(COLOR_HIGHLIGHT);
+	}
+	const COLORREF back = GetSysColor(COLOR_3DFACE);
+	const int alpha = clamp(iScrollMarkOpacity, 0, 100);
+	if (alpha >= 100) {
+		return fore;
+	}
+	return RGB(
+		(GetRValue(fore) * alpha + GetRValue(back) * (100 - alpha)) / 100,
+		(GetGValue(fore) * alpha + GetGValue(back) * (100 - alpha)) / 100,
+		(GetBValue(fore) * alpha + GetBValue(back) * (100 - alpha)) / 100);
+}
+
+static void EditPaintScrollMarks(HWND hwnd) noexcept {
+	if (SciCall_MarkerNext(0, MarkerBitmask_ScrollMark) < 0) {
+		return;
+	}
+
+	SCROLLBARINFO sbi = {};
+	sbi.cbSize = sizeof(sbi);
+	if (!GetScrollBarInfo(hwnd, OBJID_VSCROLL, &sbi)) {
+		return;
+	}
+	if (sbi.rgstate[0] & (STATE_SYSTEM_INVISIBLE | STATE_SYSTEM_UNAVAILABLE)) {
+		return;
+	}
+
+	RECT rcWindow;
+	GetWindowRect(hwnd, &rcWindow);
+	RECT rcBar = {
+		sbi.rcScrollBar.left - rcWindow.left,
+		sbi.rcScrollBar.top - rcWindow.top,
+		sbi.rcScrollBar.right - rcWindow.left,
+		sbi.rcScrollBar.bottom - rcWindow.top,
+	};
+	const int arrowHeight = GetSystemMetrics(SM_CYVSCROLL);
+	rcBar.top += arrowHeight;
+	rcBar.bottom -= arrowHeight;
+	if (rcBar.bottom <= rcBar.top) {
+		return;
+	}
+
+	const Sci_Line lineCount = SciCall_GetLineCount();
+	if (lineCount <= 1) {
+		return;
+	}
+
+	HDC hdc = GetWindowDC(hwnd);
+	if (!hdc) {
+		return;
+	}
+
+	const int barHeight = rcBar.bottom - rcBar.top;
+	const int markHeight = max(2, GetSystemMetrics(SM_CYVTHUMB) / 4);
+	HBRUSH brush = CreateSolidBrush(ScrollMarkBlendedColor());
+	for (Sci_Line line = SciCall_MarkerNext(0, MarkerBitmask_ScrollMark); line >= 0;
+		line = SciCall_MarkerNext(line + 1, MarkerBitmask_ScrollMark)) {
+		const int y = rcBar.top + static_cast<int>(static_cast<int64_t>(line) * barHeight / lineCount);
+		const RECT rcMark = { rcBar.left + 1, y, rcBar.right - 1, y + markHeight };
+		FillRect(hdc, &rcMark, brush);
+	}
+	DeleteObject(brush);
+	ReleaseDC(hwnd, hdc);
+}
+
+// posted to repaint the marks after the system has repainted the scroll bar
+#define APPM_REPAINT_SCROLLMARKS	(WM_APP + 9)
+
+static LRESULT CALLBACK EditScrollMarkProc(HWND hwnd, UINT umsg, WPARAM wParam, LPARAM lParam,
+	UINT_PTR uIdSubclass, DWORD_PTR dwRefData) noexcept {
+	UNREFERENCED_PARAMETER(uIdSubclass);
+	UNREFERENCED_PARAMETER(dwRefData);
+	switch (umsg) {
+	case WM_NCPAINT:
+	case WM_NCACTIVATE: {
+		const LRESULT result = DefSubclassProc(hwnd, umsg, wParam, lParam);
+		EditPaintScrollMarks(hwnd);
+		return result;
+	}
+
+	case WM_PAINT:
+	case WM_VSCROLL:
+	case WM_HSCROLL:
+	case WM_MOUSEWHEEL:
+	case WM_SIZE: {
+		const LRESULT result = DefSubclassProc(hwnd, umsg, wParam, lParam);
+		// the scroll bar itself is repainted by the system after this message, so paint the
+		// marks from the next message loop iteration to keep them visible while scrolling
+		PostMessage(hwnd, APPM_REPAINT_SCROLLMARKS, 0, 0);
+		return result;
+	}
+
+	case APPM_REPAINT_SCROLLMARKS:
+		EditPaintScrollMarks(hwnd);
+		return 0;
+	}
+
+	return DefSubclassProc(hwnd, umsg, wParam, lParam);
+}
+
+void EditInitScrollMarks(HWND hwnd) noexcept {
+	SetWindowSubclass(hwnd, EditScrollMarkProc, 1, 0);
+}
+
+void EditInvalidateScrollMarks() noexcept {
+	if (hwndEdit) {
+		RedrawWindow(hwndEdit, nullptr, nullptr, RDW_FRAME | RDW_INVALIDATE);
+	}
+}
 #define EditMarkAll_MeasuredSize		(1024*1024)
 #define EditMarkAll_MinDuration			1.0
 // (100 / 64) => 2 MiB on second search.
@@ -5471,6 +5591,9 @@ extern HANDLE idleTaskTimer;
 //static UINT EditMarkAll_Runs;
 
 void EditMarkAll::Reset(UINT findFlag, Sci_Position iSelCount, LPSTR text) noexcept {
+	// clear scrollbar marks left by previous search
+	SciCall_MarkerDeleteAll(MarkerNumber_ScrollMark);
+	EditInvalidateScrollMarks();
 	if (matchCount != 0) {
 		// clear existing indicator
 		SciCall_SetIndicatorCurrent(IndicatorNumber_MarkOccurrence);
@@ -5498,6 +5621,7 @@ void EditMarkAll::Reset(UINT findFlag, Sci_Position iSelCount, LPSTR text) noexc
 	lastMatchPos = 0;
 	prevStopPos = 0;
 	prevBookmarkLine = -1;
+	prevScrollMarkLine = -1;
 }
 
 void EditMarkAll::Start(BOOL bChanged, UINT findFlag, Sci_Position iSelCount, LPSTR text) noexcept {
@@ -5543,7 +5667,15 @@ void EditMarkAll::Stop() noexcept {
 	Clear();
 }
 
-static Sci_Line EditMarkAll_Bookmark(Sci_Line bookmarkLine, const Sci_Position *ranges, UINT index, int findFlag, Sci_Position matchCount) noexcept {
+static Sci_Line EditMarkAll_Bookmark(Sci_Line bookmarkLine, Sci_Line &scrollMarkLine, const Sci_Position *ranges, UINT index, int findFlag, Sci_Position matchCount) noexcept {
+	// mark every matched line on the outermost margin, so that matches are visible on the vertical scrollbar.
+	for (UINT i = 0; i < index; i += 2) {
+		const Sci_Line line = SciCall_LineFromPosition(ranges[i]);
+		if (line != scrollMarkLine) {
+			SciCall_MarkerAdd(line, MarkerNumber_ScrollMark);
+			scrollMarkLine = line;
+		}
+	}
 	if (findFlag & NP2_MarkAllSelectAll) {
 		UINT i = 0;
 		if (matchCount == static_cast<Sci_Position>(index/2)) {
@@ -5615,6 +5747,7 @@ void EditMarkAll::Continue(HANDLE timer) noexcept {
 	UINT index = 0;
 	Sci_Position ranges[EditMarkAll_RangeCacheCount*2];
 	Sci_Line bookmarkLine = prevBookmarkLine;
+	Sci_Line scrollMarkLine = prevScrollMarkLine;
 
 	SciCall_SetIndicatorCurrent(IndicatorNumber_MarkOccurrence);
 	WaitableTimer_Set(timer, WaitableTimer_IdleTaskTimeSlot);
@@ -5642,14 +5775,14 @@ void EditMarkAll::Continue(HANDLE timer) noexcept {
 			ranges[index + 1] = iSelCount;
 			index += 2;
 			if (index == COUNTOF(ranges)) {
-				bookmarkLine = EditMarkAll_Bookmark(bookmarkLine, ranges, index, findFlag, matchCount_);
+				bookmarkLine = EditMarkAll_Bookmark(bookmarkLine, scrollMarkLine, ranges, index, findFlag, matchCount_);
 				index = 0;
 			}
 		}
 		cpMin = ttf.chrgText.cpMax;
 	}
 	if (index) {
-		bookmarkLine = EditMarkAll_Bookmark(bookmarkLine, ranges, index, findFlag, matchCount_);
+		bookmarkLine = EditMarkAll_Bookmark(bookmarkLine, scrollMarkLine, ranges, index, findFlag, matchCount_);
 	}
 
 	iStartPos = max(iStartPos, cpMin);
@@ -5672,6 +5805,8 @@ void EditMarkAll::Continue(HANDLE timer) noexcept {
 	lastMatchPos = cpMin;
 	prevStopPos = iStartPos;
 	prevBookmarkLine = bookmarkLine;
+	prevScrollMarkLine = scrollMarkLine;
+	EditInvalidateScrollMarks();
 	if (!pending || matchCount_ != matchCount) {
 		matchCount = matchCount_;
 		UpdateStatusBarCache(StatusItem_Find);
