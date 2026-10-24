@@ -85,7 +85,8 @@ Release 中提供 64 位构建：
 | `Notepad4-ML.exe` | 主程序（多标签版本） |
 | `matepath.exe` | 上游附带的文件浏览器插件 |
 | `locale/<lang>/Notepad4-ML.dll` | 界面语言资源（可选，按需放） |
-| `LICENSE` | 许可证 |
+| `LICENSE` / `NOTICE` | 许可证全文与上游版权说明 |
+| `README.md` / `readme_zh_cn.md` | 英文与简体中文说明 |
 
 建议解压到同一目录使用。`locale` 目录可选，缺少时界面为英文。
 
