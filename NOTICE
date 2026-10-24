@@ -1,0 +1,45 @@
+Notepad4-ML (Notepad4-MultiLabel) - copyright notices and provenance
+=====================================================================
+
+Notepad4-ML is a fork of Notepad4 and inherits its BSD 3-Clause license.
+The full license text is in the LICENSE file. This NOTICE records the
+upstream projects, their copyright notices, and the scope of the fork.
+
+Upstream projects
+-----------------
+  Notepad4 / matepath   https://github.com/zufuliu/notepad4
+  Notepad2              https://www.flos-freeware.ch
+  Notepad2-mod          https://xhmikosr.github.io/notepad2-mod/
+
+Copyright notices of the upstream projects
+------------------------------------------
+  Notepad4        Copyright (c) 2011-2026 Zufu Liu and All contributors.
+  matepath        Copyright (c) 2011-2026 Zufu Liu and All contributors.
+  Notepad2-mod    Copyright (c) 2010-2017 XhmikosR and All contributors.
+  Notepad2        Copyright (c) 2004-2012 Florian Balmer.
+  metapath        Copyright (c) 1996-2012 Florian Balmer.
+  Scintilla       Copyright (c) 1998-2026 Neil Hodgson and contributors.
+
+Modifications for Notepad4-ML
+-----------------------------
+  Copyright (c) 2026 Notepad4-ML contributors.
+
+Base version of the fork
+------------------------
+  Upstream  : Notepad4 v26.10 (r6392, 7b269f54)
+  Baseline  : 3afea94b18c469b95b504553a5ece1a9e4c57d9e
+  Upstream license files (LICENSE, License.txt) are kept unchanged in this
+  repository; they cover the unmodified upstream parts of the source tree.
+
+Scope of the fork
+-----------------
+  Notepad4-ML adds: multi-tab editing, match markers on the vertical
+  scrollbar, an "open only in new window" option, "open in new window"
+  (move semantics), and localized strings for 11 UI languages.
+  All other behavior follows upstream Notepad4.
+
+Not affiliated with upstream
+----------------------------
+  Notepad4-ML is not an official Notepad4 release and is not maintained by
+  the Notepad4 author. Please do not report Notepad4-ML specific issues to
+  the upstream project without first checking whether upstream is affected.
