@@ -794,7 +794,7 @@ BEGIN
 		MENUITEM "온라인 위키(&W)",										IDM_HELP_ONLINE_WIKI
 		MENUITEM "명령줄 도움말(&C)",									IDM_CMDLINE_HELP
 		MENUITEM SEPARATOR
-		MENUITEM "Notepad4 정보(&A)...\tF1",							IDM_HELP_ABOUT
+		MENUITEM "Notepad4-ML 정보(&A)...\tF1",							IDM_HELP_ABOUT
 	END
 END
 

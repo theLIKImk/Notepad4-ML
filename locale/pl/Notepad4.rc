@@ -794,7 +794,7 @@ BEGIN
 		MENUITEM "W&iki w internecie",			IDM_HELP_ONLINE_WIKI
 		MENUITEM "Pomoc wiersza &poleceń",	IDM_CMDLINE_HELP
 		MENUITEM SEPARATOR
-		MENUITEM "&O programie Notepad4\tF1",	IDM_HELP_ABOUT
+		MENUITEM "&O programie Notepad4-ML\tF1",	IDM_HELP_ABOUT
 	END
 END
 
@@ -1894,7 +1894,7 @@ plik\tMusi być ostatnim argumentem, domyślnie nazw ze spacjami nie ujmuje się
 /h\tWybierz schemat kolorowania składni dla strony internetowej.\n\
 /x\tWybierz schemat kolorowania składni dla dokumentu XML.\n\
 /c\tOtwórz nowe okno programu i wklej zawartość schowka.\n\
-/b\tOtwórz Notepad4 w trybie schowka.\n\
+/b\tOtwórz Notepad4-ML w trybie schowka.\n\
 /n\tZawsze otwieraj nowe okno programu (/ns pojedyncze wystąpienie pliku).\n\
 /r\tUżyj jednego okna (/rs pojedyncze wystąpienie pliku).\n\
 /p<flaga> Ustaw pozycję oraz rozmiar okna (/p0, /ps, /pf,l,t,r,b,m).\n\
