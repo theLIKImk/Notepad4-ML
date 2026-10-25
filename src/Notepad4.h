@@ -21,7 +21,7 @@
 
 //==== Main Window ============================================================
 #define WC_NOTEPAD4 L"Notepad4-ML"
-#define MY_APPUSERMODELID	L"Notepad4 Text Editor"
+#define MY_APPUSERMODELID	L"Notepad4-ML Text Editor"
 
 enum TripleBoolean {
 	TripleBoolean_False = 0,
