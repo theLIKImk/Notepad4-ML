@@ -3363,7 +3363,7 @@ void LoadLaunchSetings() noexcept {
 	} else if (iUseTargetApplication != UseTargetApplication_None && StrIsEmpty(szTargetApplication)) {
 		iUseTargetApplication = UseTargetApplication_Use;
 		iTargetApplicationMode = TargetApplicationMode_SendMsg;
-		lstrcpy(szTargetApplication, L"Notepad4.exe");
+		lstrcpy(szTargetApplication, L"Notepad4-ML.exe");
 		StrCpyEx(szTargetApplicationParams, L"");
 		lstrcpy(szTargetApplicationWndClass, WC_NOTEPAD4);
 		StrCpyEx(szDDEMsg, L"");
