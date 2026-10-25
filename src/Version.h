@@ -31,9 +31,11 @@
 #define VERSION_WEBPAGE_DISPLAY		L"flo's freeware - https://www.flos-freeware.ch"
 #define VERSION_EMAIL_DISPLAY		L"florian.balmer@gmail.com"
 #define VERSION_MODPAGE_DISPLAY		L"https://xhmikosr.github.io/notepad2-mod/"
-#define VERSION_NEWPAGE_DISPLAY		L"https://github.com/theLIKImk/Notepad4-ML"
+// upstream Notepad4 project page, shown in the About dialog credits
+#define VERSION_NEWPAGE_DISPLAY		L"https://github.com/zufuliu/notepad4"
 #define VERSION_SCIPAGE_DISPLAY		L"https://www.scintilla.org/"
 
+#define HELP_LINK_PROJECT_HOME		L"https://github.com/theLIKImk/Notepad4-ML"
 #define HELP_LINK_LATEST_RELEASE	L"https://github.com/theLIKImk/Notepad4-ML/releases"
 #define HELP_LINK_LATEST_BUILD		L"https://github.com/theLIKImk/Notepad4-ML/actions"
 #define HELP_LINK_REPORT_ISSUE		L"https://github.com/theLIKImk/Notepad4-ML/issues"

@@ -172,8 +172,10 @@ void OpenHelpLink(HWND hwnd, int cmd) noexcept {
 		link = VERSION_SCIPAGE_DISPLAY;
 		break;
 	case IDC_NEW_PAGE_LINK:
-	case IDM_HELP_PROJECT_HOME:
 		link = VERSION_NEWPAGE_DISPLAY;
+		break;
+	case IDM_HELP_PROJECT_HOME:
+		link = HELP_LINK_PROJECT_HOME;
 		break;
 	case IDM_HELP_LATEST_RELEASE:
 		link = HELP_LINK_LATEST_RELEASE;
