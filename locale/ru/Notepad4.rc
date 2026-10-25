@@ -1085,7 +1085,7 @@ BEGIN
     ICON            IDR_MAINWND,IDC_STATIC,14,7,20,20
     LTEXT           "",IDC_VERSION,45,7,200,8
     LTEXT           "",IDC_BUILD_INFO,45,18,200,16
-    LTEXT           "Форк Notepad4-ML:",IDC_STATIC,45,38,94,8
+    LTEXT           "Notepad4-ML:",IDC_STATIC,45,38,94,8
     CONTROL         "",IDC_ML_PAGE_LINK,"SysLink",WS_TABSTOP,45,48,200,10
     LTEXT           "© 2011-2026 Zufu Liu и участники проекта",IDC_STATIC,45,62,200,8
     CONTROL         "",IDC_NEW_PAGE_LINK,"SysLink",WS_TABSTOP,45,72,200,10
@@ -1205,7 +1205,7 @@ CAPTION "Интеграция в систему"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     GROUPBOX        "Интеграция в систему (требуются права администратора)",IDC_GROUP_SYSTEM_INTEGRATION,7,7,232,84
-    AUTOCHECKBOX    "Добавить Notepad4 в контекстное меню Проводника",IDC_ENABLE_CONTEXT_MENU,14,20,212,10,WS_TABSTOP
+    AUTOCHECKBOX    "Добавить Notepad4-ML в контекстное меню Проводника",IDC_ENABLE_CONTEXT_MENU,14,20,212,10,WS_TABSTOP
     LTEXT           "Текст в меню:",IDC_STATIC,28,35,88,8
     EDITTEXT        IDC_CONTEXT_MENU_TEXT,122,32,106,14,ES_AUTOHSCROLL | WS_TABSTOP
     AUTOCHECKBOX    "Список переходов на панели задач",IDC_ENABLE_JUMP_LIST,14,48,204,10,WS_TABSTOP
@@ -1760,7 +1760,7 @@ BEGIN
     IDS_SAVEFILE            "Сохранение ""%s""..."
     IDS_PRINTFILE           "Печать страницы %s..."
     IDS_SAVINGSETTINGS      "Сохранение настроек..."
-    IDS_LINKDESCRIPTION     "Редактировать в Notepad&4"
+    IDS_LINKDESCRIPTION     "Редактировать в Notepad4-&ML"
     IDS_FILTER_ALL          "Все файлы (*.*)|*.*|"
     IDS_FILTER_EXE          "Исполняемые файлы (*.exe;*.com;*.bat;*.cmd;*.lnk;*.pif)|*.exe;*.com;*.bat;*.cmd;*.lnk;*.pif|Все файлы (*.*)|*.*|"
 END

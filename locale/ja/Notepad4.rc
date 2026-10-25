@@ -1084,7 +1084,7 @@ BEGIN
     ICON            IDR_MAINWND,IDC_STATIC,14,7,20,20
     LTEXT           "",IDC_VERSION,45,7,200,8
     LTEXT           "",IDC_BUILD_INFO,45,18,200,16
-    LTEXT           "Notepad4-ML フォーク:",IDC_STATIC,45,38,94,8
+    LTEXT           "Notepad4-ML:",IDC_STATIC,45,38,94,8
     CONTROL         "",IDC_ML_PAGE_LINK,"SysLink",WS_TABSTOP,45,48,200,10
     LTEXT           "Copyright © Zufu Liu and all contributors.",IDC_STATIC,45,62,200,8
     CONTROL         "",IDC_NEW_PAGE_LINK,"SysLink",WS_TABSTOP,45,72,200,10
@@ -1204,7 +1204,7 @@ CAPTION "システムに統合"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     GROUPBOX        "システムに統合 (管理者権限が必要)",IDC_GROUP_SYSTEM_INTEGRATION,7,7,218,84
-    AUTOCHECKBOX    "エクスプローラーの右クリックメニューに Notepad4 を追加",IDC_ENABLE_CONTEXT_MENU,14,20,204,10,WS_TABSTOP
+    AUTOCHECKBOX    "エクスプローラーの右クリックメニューに Notepad4-ML を追加",IDC_ENABLE_CONTEXT_MENU,14,20,204,10,WS_TABSTOP
     LTEXT           "メニュー表示の文字列:",IDC_STATIC,28,35,70,8
     EDITTEXT        IDC_CONTEXT_MENU_TEXT,100,32,118,14,ES_AUTOHSCROLL | WS_TABSTOP
     AUTOCHECKBOX    "タスクバーのジャンプリストを有効化",IDC_ENABLE_JUMP_LIST,14,48,204,10,WS_TABSTOP
@@ -1759,7 +1759,7 @@ BEGIN
     IDS_SAVEFILE            "保存中 ""%s"" ..."
     IDS_PRINTFILE           "%s ページを印刷中..."
     IDS_SAVINGSETTINGS     "設定保存中..."
-    IDS_LINKDESCRIPTION     "Notepad&4 で編集"
+    IDS_LINKDESCRIPTION     "Notepad4-ML で編集(&M)"
     IDS_FILTER_ALL          "すべてのファイル (*.*)|*.*|"
     IDS_FILTER_EXE          "実行可能ファイル (*.exe;*.com;*.bat;*.cmd;*.lnk;*.pif)|*.exe;*.com;*.bat;*.cmd;*.lnk;*.pif|すべてのファイル (*.*)|*.*|"
 END

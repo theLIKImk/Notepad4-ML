@@ -1084,7 +1084,7 @@ BEGIN
     ICON            IDR_MAINWND,IDC_STATIC,14,7,20,20
     LTEXT           "",IDC_VERSION,45,7,200,8
     LTEXT           "",IDC_BUILD_INFO,45,18,200,16
-    LTEXT           "Notepad4-ML 分支:",IDC_STATIC,45,38,94,8
+    LTEXT           "Notepad4-ML:",IDC_STATIC,45,38,94,8
     CONTROL         "",IDC_ML_PAGE_LINK,"SysLink",WS_TABSTOP,45,48,200,10
     LTEXT           "版权所有 © 2011-2026 Zufu Liu 和所有贡献者.",IDC_STATIC,45,62,200,8
     CONTROL         "",IDC_NEW_PAGE_LINK,"SysLink",WS_TABSTOP,45,72,200,10
@@ -1204,7 +1204,7 @@ CAPTION "系统集成"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     GROUPBOX        "系统集成(需要管理员权限)",IDC_GROUP_SYSTEM_INTEGRATION,7,7,218,84
-    AUTOCHECKBOX    "将 Notepad4 添加到 Windows 资源管理器的右键菜单",IDC_ENABLE_CONTEXT_MENU,14,20,204,10,WS_TABSTOP
+    AUTOCHECKBOX    "将 Notepad4-ML 添加到 Windows 资源管理器的右键菜单",IDC_ENABLE_CONTEXT_MENU,14,20,204,10,WS_TABSTOP
     LTEXT           "右键菜单文字: ",IDC_STATIC,28,35,70,8
     EDITTEXT        IDC_CONTEXT_MENU_TEXT,100,32,118,14,ES_AUTOHSCROLL | WS_TABSTOP
     AUTOCHECKBOX    "启用任务栏跳转列表",IDC_ENABLE_JUMP_LIST,14,48,204,10,WS_TABSTOP
@@ -1759,7 +1759,7 @@ BEGIN
     IDS_SAVEFILE            "正在保存“%s”..."
     IDS_PRINTFILE           "正在打印页面 %s..."
     IDS_SAVINGSETTINGS      "正在保存设置..."
-    IDS_LINKDESCRIPTION     "使用 Notepad4 编辑(&4)"
+    IDS_LINKDESCRIPTION     "使用 Notepad4-ML 编辑(&M)"
     IDS_FILTER_ALL          "所有文件(*.*)|*.*|"
     IDS_FILTER_EXE          "可执行文件(*.exe;*.com;*.bat;*.cmd;*.lnk;*.pif)|*.exe;*.com;*.bat;*.cmd;*.lnk;*.pif|所有文件(*.*)|*.*|"
 END

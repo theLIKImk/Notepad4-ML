@@ -1084,7 +1084,7 @@ BEGIN
     ICON            IDR_MAINWND,IDC_STATIC,14,7,20,20
     LTEXT           "",IDC_VERSION,45,7,200,8
     LTEXT           "",IDC_BUILD_INFO,45,18,200,16
-    LTEXT           "Notepad4-ML Fork:",IDC_STATIC,45,38,94,8
+    LTEXT           "Notepad4-ML:",IDC_STATIC,45,38,94,8
     CONTROL         "",IDC_ML_PAGE_LINK,"SysLink",WS_TABSTOP,45,48,200,10
     LTEXT           "Copyright © 2011-2026 Zufu Liu und alle Mitwirkende",IDC_STATIC,45,62,200,8
     CONTROL         "",IDC_NEW_PAGE_LINK,"SysLink",WS_TABSTOP,45,72,200,10
@@ -1204,7 +1204,7 @@ CAPTION "Systemintegration"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     GROUPBOX        "Systemintegration (benötigt Administratorrechte)",IDC_GROUP_SYSTEM_INTEGRATION,7,7,218,84
-    AUTOCHECKBOX    "Notepad4 dem Windows Explorer &Kontextmenü hinzufügen",IDC_ENABLE_CONTEXT_MENU,14,20,204,10,WS_TABSTOP
+    AUTOCHECKBOX    "Notepad4-ML dem Windows Explorer &Kontextmenü hinzufügen",IDC_ENABLE_CONTEXT_MENU,14,20,204,10,WS_TABSTOP
     LTEXT           "Kontextmenütext:",IDC_STATIC,28,35,70,8
     EDITTEXT        IDC_CONTEXT_MENU_TEXT,100,32,118,14,ES_AUTOHSCROLL | WS_TABSTOP
     AUTOCHECKBOX    "Aktiviere Taskbar &Jump List",IDC_ENABLE_JUMP_LIST,14,48,204,10,WS_TABSTOP
@@ -1759,7 +1759,7 @@ BEGIN
     IDS_SAVEFILE            "Speichere ""%s""..."
     IDS_PRINTFILE           "Drucke Seite %s..."
     IDS_SAVINGSETTINGS      "Einstellungen speichern..."
-    IDS_LINKDESCRIPTION     "Öffnen mit Notepad&4"
+    IDS_LINKDESCRIPTION     "Öffnen mit Notepad4-&ML"
     IDS_FILTER_ALL          "Alle Dateien (*.*)|*.*|"
     IDS_FILTER_EXE          "Ausführbare Dateien (*.exe;*.com;*.bat;*.cmd;*.lnk;*.pif)|*.exe;*.com;*.bat;*.cmd;*.lnk;*.pif|Alle Dateien (*.*)|*.*|"
 END
