@@ -53,6 +53,7 @@
 #define IDC_MOD_PAGE_LINK				103
 #define IDC_NEW_PAGE_LINK				104
 #define IDC_SCI_PAGE_LINK				105
+#define IDC_ML_PAGE_LINK				106	// Notepad4-ML fork link in About
 #define IDC_BUILD_INFO					110
 #define IDC_COPY_BUILD_INFO				111
 // Find/Replace Text

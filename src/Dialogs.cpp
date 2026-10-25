@@ -174,6 +174,7 @@ void OpenHelpLink(HWND hwnd, int cmd) noexcept {
 	case IDC_NEW_PAGE_LINK:
 		link = VERSION_NEWPAGE_DISPLAY;
 		break;
+	case IDC_ML_PAGE_LINK:
 	case IDM_HELP_PROJECT_HOME:
 		link = HELP_LINK_PROJECT_HOME;
 		break;
@@ -275,7 +276,9 @@ INT_PTR CALLBACK AboutDlgProc(HWND hwnd, UINT umsg, WPARAM wParam, LPARAM lParam
 		SetDlgItemText(hwnd, IDC_EMAIL_LINK, wch);
 		wsprintf(wch, L"<A>%s</A>", VERSION_MODPAGE_DISPLAY);
 		SetDlgItemText(hwnd, IDC_MOD_PAGE_LINK, wch);
-		wsprintf(wch, L"<A>%s</A>", VERSION_NEWPAGE_DISPLAY);
+		wsprintf(wch, L"<A>%s</A>", HELP_LINK_PROJECT_HOME);
+	SetDlgItemText(hwnd, IDC_ML_PAGE_LINK, wch);
+	wsprintf(wch, L"<A>%s</A>", VERSION_NEWPAGE_DISPLAY);
 		SetDlgItemText(hwnd, IDC_NEW_PAGE_LINK, wch);
 		wsprintf(wch, L"<A>%s</A>", VERSION_SCIPAGE_DISPLAY);
 		SetDlgItemText(hwnd, IDC_SCI_PAGE_LINK, wch);
