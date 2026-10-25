@@ -2584,8 +2584,8 @@ HKEY_CLASSES_ROOT\*\shell\Notepad4
 		(Default)			REG_SZ		"Notepad4.exe" "%1"
 
 HKEY_CLASSES_ROOT\Applications\Notepad4.exe
-	AppUserModelID			REG_SZ		Notepad4 Text Editor
-	FriendlyAppName			REG_SZ		Notepad4 Text Editor
+	AppUserModelID			REG_SZ		Notepad4-ML Text Editor
+	FriendlyAppName			REG_SZ		Notepad4-ML Text Editor
 	shell\open\command
 		(Default)			REG_SZ		"Notepad4.exe" "%1"
 
