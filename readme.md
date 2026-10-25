@@ -8,7 +8,7 @@ Notepad4-ML is a multi-tab fork of [Notepad4](https://github.com/zufuliu/notepad
 adding a tab bar and scrollbar match markers to what was originally a
 single-document lightweight editor.
 
-- **Version**: 0.1
+- **Version**: 0.1.1
 - **Based on upstream**: Notepad4 v26.10 (r6392, 7b269f54)
 - **Upstream baseline commit**: `3afea94b18c469b95b504553a5ece1a9e4c57d9e` (2026-10-23)
 - **License**: BSD 3-Clause — see [LICENSE](LICENSE) for the full text and
@@ -86,7 +86,7 @@ Before filing an issue, **first confirm whether upstream Notepad4 has the same p
 
 Please include in your issue:
 
-- Notepad4-ML version (the `0.1` shown in About, plus the upstream version it is based on)
+- Notepad4-ML version (the `0.1.1` shown in About, plus the upstream version it is based on)
 - Windows version
 - Steps to reproduce
 - Whether it reproduces in official Notepad4

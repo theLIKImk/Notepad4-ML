@@ -7,7 +7,7 @@
 Notepad4-ML 是基于 [Notepad4](https://github.com/zufuliu/notepad4) 的多标签分支版本，
 为这个原本单文档的轻量编辑器增加了标签页与滚动条匹配标记。
 
-- **版本**：0.1
+- **版本**：0.1.1
 - **基于上游**：Notepad4 v26.10 (r6392, 7b269f54)
 - **上游基线提交**：`3afea94b18c469b95b504553a5ece1a9e4c57d9e`（2026-10-23）
 - **许可**：BSD 3-Clause，见 [LICENSE](LICENSE)（全文）与 [NOTICE](NOTICE)（上游版权与分支说明）
@@ -71,7 +71,7 @@ Notepad4-ML **不是** Notepad4 官方版本，也不由 Notepad4 作者维护�
 
 请在 issue 中写明：
 
-- Notepad4-ML 版本（关于对话框中的 `0.1` 及基于的上游版本）
+- Notepad4-ML 版本（关于对话框中的 `0.1.1` 及基于的上游版本）
 - Windows 版本
 - 复现步骤
 - 是否已在官方 Notepad4 上复现

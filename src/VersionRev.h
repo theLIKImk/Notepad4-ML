@@ -1,6 +1,6 @@
 #define VERSION_MINOR 0
 #define VERSION_BUILD_NUM 1
 #define VERSION_BUILD 1
-#define VERSION_HASH TEXT("ml0.1")
-#define VERSION_REV 0
-#define VERSION_REV_FULL TEXT("ML 0.1 (based on upstream r6392 / 7b269f54)")
+#define VERSION_HASH TEXT("ml0.1.1")
+#define VERSION_REV 1
+#define VERSION_REV_FULL TEXT("ML 0.1.1 (based on upstream r6392 / 7b269f54)")
