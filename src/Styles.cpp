@@ -662,6 +662,16 @@ static inline void FindDarkThemeFile(LPWSTR lpszIniFile) noexcept {
 	// relative to program ini file
 	lstrcpy(lpszIniFile, szIniFile);
 	lstrcpy(PathFindFileName(lpszIniFile), WC_NOTEPAD4 L" DarkTheme.ini");
+	// seed from the shipped template when the dark theme file is missing
+	// (e.g. the ini was created before the template mechanism existed)
+	if (!PathFileExists(lpszIniFile)) {
+		WCHAR szDefault[MAX_PATH];
+		lstrcpy(szDefault, lpszIniFile);
+		lstrcat(szDefault, L"-default");
+		if (PathFileExists(szDefault)) {
+			CopyFile(szDefault, lpszIniFile, TRUE);
+		}
+	}
 }
 
 void Style_LoadTabSettings(LPCEDITLEXER pLex) noexcept {
