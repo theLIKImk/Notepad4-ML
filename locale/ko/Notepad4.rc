@@ -1084,7 +1084,7 @@ BEGIN
     ICON            IDR_MAINWND,IDC_STATIC,14,7,20,20
     LTEXT           "",IDC_VERSION,45,7,200,8
     LTEXT           "",IDC_BUILD_INFO,45,18,200,16
-    LTEXT           "Notepad4-ML 포크:",IDC_STATIC,45,38,94,8
+    LTEXT           "Notepad4-ML:",IDC_STATIC,45,38,94,8
     CONTROL         "",IDC_ML_PAGE_LINK,"SysLink",WS_TABSTOP,45,48,200,10
     LTEXT           "Copyright © 2011-2026 Zufu Liu 및 모든 기여자",IDC_STATIC,45,62,200,8
     CONTROL         "",IDC_NEW_PAGE_LINK,"SysLink",WS_TABSTOP,45,72,200,10
@@ -1204,7 +1204,7 @@ CAPTION "시스템 통합"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     GROUPBOX        "시스템 통합 (관리자 권한 필요)",IDC_GROUP_SYSTEM_INTEGRATION,7,7,218,84
-    AUTOCHECKBOX    "Windows 탐색기의 상황에 맞는 메뉴에 Notepad4 추가",IDC_ENABLE_CONTEXT_MENU,14,20,204,10,WS_TABSTOP
+    AUTOCHECKBOX    "Windows 탐색기의 상황에 맞는 메뉴에 Notepad4-ML 추가",IDC_ENABLE_CONTEXT_MENU,14,20,204,10,WS_TABSTOP
     LTEXT           "상황에 맞는 메뉴 텍스트:",IDC_STATIC,28,35,70,8
     EDITTEXT        IDC_CONTEXT_MENU_TEXT,100,32,118,14,ES_AUTOHSCROLL | WS_TABSTOP
     AUTOCHECKBOX    "작업 표시줄 점프 목록 사용",IDC_ENABLE_JUMP_LIST,14,48,204,10,WS_TABSTOP
@@ -1759,7 +1759,7 @@ BEGIN
     IDS_SAVEFILE            """%s"" 저장 중..."
     IDS_PRINTFILE           "%s 페이지 인쇄 중..."
     IDS_SAVINGSETTINGS      "설정 저장 중..."
-    IDS_LINKDESCRIPTION     "Notepad4로 편집(&4)"
+    IDS_LINKDESCRIPTION     "Notepad4-ML로 편집(&M)"
     IDS_FILTER_ALL          "모든 파일 (*.*)|*.*|"
     IDS_FILTER_EXE          "실행 파일 (*.exe;*.com;*.bat;*.cmd;*.lnk;*.pif)|*.exe;*.com;*.bat;*.cmd;*.lnk;*.pif|모든 파일 (*.*)|*.*|"
 END

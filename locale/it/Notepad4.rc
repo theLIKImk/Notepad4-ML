@@ -1084,7 +1084,7 @@ BEGIN
     ICON            IDR_MAINWND,IDC_STATIC,14,7,20,20
     LTEXT           "",IDC_VERSION,45,7,200,8
     LTEXT           "",IDC_BUILD_INFO,45,18,200,16
-    LTEXT           "Fork Notepad4-ML:",IDC_STATIC,45,38,94,8
+    LTEXT           "Notepad4-ML:",IDC_STATIC,45,38,94,8
     CONTROL         "",IDC_ML_PAGE_LINK,"SysLink",WS_TABSTOP,45,48,200,10
     LTEXT           "Copyright © 2011-2026 Zufu Liu e tutti i contributori.",IDC_STATIC,45,62,200,8
     CONTROL         "",IDC_NEW_PAGE_LINK,"SysLink",WS_TABSTOP,45,72,200,10
@@ -1204,7 +1204,7 @@ CAPTION "Integrazione col sistema"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     GROUPBOX        "Integrazione col sistema (richiede privilegi da Amministratore)",IDC_GROUP_SYSTEM_INTEGRATION,7,7,218,84
-    AUTOCHECKBOX    "Aggiungi Notepad4 al menu contestuale di Esplora risorse.",IDC_ENABLE_CONTEXT_MENU,14,20,204,10,WS_TABSTOP
+    AUTOCHECKBOX    "Aggiungi Notepad4-ML al menu contestuale di Esplora risorse.",IDC_ENABLE_CONTEXT_MENU,14,20,204,10,WS_TABSTOP
     LTEXT           "Testo menu contestuale:",IDC_STATIC,28,35,70,8
     EDITTEXT        IDC_CONTEXT_MENU_TEXT,100,32,118,14,ES_AUTOHSCROLL | WS_TABSTOP
     AUTOCHECKBOX    "Abilita Jump List nella barra delle applicazioni.",IDC_ENABLE_JUMP_LIST,14,48,204,10,WS_TABSTOP
@@ -1759,7 +1759,7 @@ BEGIN
     IDS_SAVEFILE            "Salvataggio ""%s""..."
     IDS_PRINTFILE           "Stampa pagina %s..."
     IDS_SAVINGSETTINGS      "Salvataggio impostazioni..."
-    IDS_LINKDESCRIPTION     "Modifica con Notepad&4"
+    IDS_LINKDESCRIPTION     "Modifica con Notepad4-&ML"
     IDS_FILTER_ALL          "Tutti i files (*.*)|*.*|"
     IDS_FILTER_EXE          "File Eseguibili (*.exe;*.com;*.bat;*.cmd;*.lnk;*.pif)|*.exe;*.com;*.bat;*.cmd;*.lnk;*.pif|All Files (*.*)|*.*|"
 END
