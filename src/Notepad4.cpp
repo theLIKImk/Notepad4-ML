@@ -455,6 +455,7 @@ static void TabCloseMoved() noexcept;
 static void TabInitFirst() noexcept;
 static bool TabAskSaveAll() noexcept;
 static bool FileLoadInTab(LPCWSTR lpszFile);
+static bool TabSwitchToFile(LPCWSTR lpszFile) noexcept;
 static BOOL LaunchInNewWindow(HWND hwnd, LPCWSTR lpszFile) noexcept;
 static BOOL LaunchNewWindow(HWND hwnd, bool emptyWindow) noexcept;
 static bool SaveDocumentToTempFile(LPWSTR pszPath, int cchPath) noexcept;
@@ -1361,10 +1362,10 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT umsg, WPARAM wParam, LPARAM lParam)
 					WCHAR tchFile[MAX_PATH];
 					bOpened = false;
 					if (OpenFileDlg(tchFile, COUNTOF(tchFile), lpsz)) {
-						bOpened = FileLoad(FileLoadFlag_Default, tchFile);
+						bOpened = FileLoadInTab(tchFile);
 					}
 				} else {
-					bOpened = FileLoad(FileLoadFlag_Default, lpsz);
+					bOpened = FileLoadInTab(lpsz);
 				}
 
 				if (bOpened) {
@@ -3177,10 +3178,10 @@ LRESULT MsgCommand(HWND hwnd, WPARAM wParam, LPARAM lParam) {
 					WCHAR tchFile[MAX_PATH];
 
 					if (OpenFileDlg(tchFile, COUNTOF(tchFile), tchSelItem)) {
-						FileLoad(FileLoadFlag_DontSave, tchFile);
+						FileLoadInTab(tchFile);
 					}
 				} else {
-					FileLoad(FileLoadFlag_DontSave, tchSelItem);
+					FileLoadInTab(tchSelItem);
 				}
 			}
 		}
@@ -3218,7 +3219,7 @@ LRESULT MsgCommand(HWND hwnd, WPARAM wParam, LPARAM lParam) {
 			if (FileSave(FileSaveFlag_Ask)) {
 				WCHAR tchFile[MAX_PATH];
 				if (FileMRUDlg(hwnd, tchFile)) {
-					FileLoad(FileLoadFlag_DontSave, tchFile);
+					FileLoadInTab(tchFile);
 				}
 			}
 		}
@@ -4904,7 +4905,7 @@ LRESULT MsgCommand(HWND hwnd, WPARAM wParam, LPARAM lParam) {
 						mruFile.DeleteFileFromStore(path, index);
 					}
 				} else if (FileSave(FileSaveFlag_Ask)) {
-					FileLoad(FileLoadFlag_DontSave, path);
+					FileLoadInTab(path);
 				}
 			}
 		}
@@ -7513,6 +7514,35 @@ static bool TabSwitchTo(int index) noexcept {
 	return true;
 }
 
+// switch to the tab already showing lpszFile (if any), mirroring the
+// path normalization FileLoad() applies before storing szCurFile
+static bool TabSwitchToFile(LPCWSTR lpszFile) noexcept {
+	if (StrIsEmpty(lpszFile)) {
+		return false;
+	}
+	WCHAR szPath[MAX_PATH];
+	lstrcpyn(szPath, lpszFile, COUNTOF(szPath));
+	WCHAR szTmp[MAX_PATH];
+	if (ExpandEnvironmentStringsEx(szPath, szTmp)) {
+		lstrcpy(szPath, szTmp);
+	}
+	if (PathIsRelative(szPath) && PathCombine(szTmp, g_wchWorkingDirectory, szPath)) {
+		lstrcpy(szPath, szTmp);
+	}
+	if (PathCanonicalize(szTmp, szPath)) {
+		lstrcpy(szPath, szTmp);
+	}
+	GetLongPathName(szPath, szPath, COUNTOF(szPath));
+	PathGetLnkPath(szPath, szPath);
+	for (int i = 0; i < iTabCount; i++) {
+		if (StrNotEmpty(editorTabs[i].szPath) && PathEqual(editorTabs[i].szPath, szPath)) {
+			TabSwitchTo(i);
+			return true;
+		}
+	}
+	return false;
+}
+
 static bool TabNew() noexcept {
 	if (iTabCount >= MAX_EDITOR_TABS) {
 		return false;
@@ -7636,6 +7666,10 @@ static bool TabAskSaveAll() noexcept {
 static bool FileLoadInTab(LPCWSTR lpszFile) {
 	if (iTabCount == 0) {
 		TabInitFirst();
+	}
+	// the same file must not open in two tabs: jump to the existing one
+	if (StrNotEmpty(lpszFile) && TabSwitchToFile(lpszFile)) {
+		return true;
 	}
 	const bool bEmpty = iTabCurrent >= 0 && StrIsEmpty(szCurFile) && !IsDocumentModified() && SciCall_GetLength() == 0;
 	if (!bEmpty && !TabNew()) {
