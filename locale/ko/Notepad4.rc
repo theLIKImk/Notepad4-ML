@@ -1,4 +1,4 @@
-// Microsoft Visual C++ generated resource script.
+﻿// Microsoft Visual C++ generated resource script.
 //
 #include "../../src/resource.h"
 #include "../../src/config.h"
@@ -31,7 +31,9 @@ LANGUAGE LANG_KOREAN, SUBLANG_DEFAULT
 // RT_MANIFEST
 //
 
+#if !defined(NP2_EMBEDDED_NO_MANIFEST)
 IDR_RT_MANIFEST         RT_MANIFEST             "..\\..\\res\\Notepad4.exe.manifest"
+#endif
 
 /////////////////////////////////////////////////////////////////////////////
 //

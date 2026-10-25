@@ -19,6 +19,9 @@
 
 //! Enable localization with satellite resource DLLs.
 #define NP2_ENABLE_APP_LOCALIZATION_DLL			1
+// language resources are also linked into the exe itself; used when the external
+// locale/<lang>/ DLLs are absent (single-file distribution)
+#define NP2_ENABLE_EMBEDDED_LANGUAGES			1
 //! Enable test localization dialog layout with default UI font for target locale.
 #define NP2_ENABLE_TEST_LOCALIZATION_LAYOUT		0
 

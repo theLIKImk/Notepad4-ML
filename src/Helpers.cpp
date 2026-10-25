@@ -30,6 +30,7 @@
 #include <commdlg.h>
 #include <uxtheme.h>
 #include <vssym32.h>
+#include <winnls.h>
 #include <cstdio>
 #include "config.h"
 #include "Helpers.h"
@@ -1585,12 +1586,20 @@ HMODULE LoadLocalizedResourceDLL(UINT lang, LPCWSTR dllName) noexcept {
 		lang = GetUserDefaultUILanguage();
 	}
 
+#if NP2_ENABLE_EMBEDDED_LANGUAGES
+	// try the external locale/<lang> DLL first; when absent, fall back to the
+	// language resources linked into this exe (single-file multi-language build).
+	// Setting the thread's preferred UI languages makes LoadString/FindResource
+	// pick the matching LANGUAGE blocks, including English on a non-English OS.
+#else
+	if (lang == LANG_ENGLISH) {
+		return nullptr;
+	}
+#endif
+
 	LPCWSTR folder = nullptr;
 	const LANGID subLang = SUBLANGID(lang);
 	switch (PRIMARYLANGID(lang)) {
-	case LANG_ENGLISH:
-	default:
-		return nullptr;
 	case LANG_CHINESE:
 		folder = IsChineseTraditionalSubLang(subLang) ? L"zh-Hant" : L"zh-Hans";
 		break;
@@ -1631,7 +1640,29 @@ HMODULE LoadLocalizedResourceDLL(UINT lang, LPCWSTR dllName) noexcept {
 	PathAppend(path, dllName);
 
 	constexpr DWORD flags = LOAD_LIBRARY_AS_DATAFILE_EXCLUSIVE | LOAD_LIBRARY_AS_IMAGE_RESOURCE;
-	HMODULE hDLL = LoadLibraryEx(path, nullptr, flags);
+	HMODULE hDLL = nullptr;
+	if (folder != nullptr) {
+		hDLL = LoadLibraryEx(path, nullptr, flags);
+	}
+#if NP2_ENABLE_EMBEDDED_LANGUAGES
+	{
+		// no external language DLL (or not requested): fall back to the language
+		// resources linked into this exe. Setting the thread's preferred UI languages
+		// makes LoadString/FindResource pick the matching LANGUAGE blocks.
+		if (lang != LANG_USER_DEFAULT) {
+			WCHAR wch[16];
+			wsprintf(wch, L"%04X", lang);
+			SetThreadPreferredUILanguages(MUI_LANGUAGE_ID, nullptr, nullptr);
+			SetThreadPreferredUILanguages(MUI_LANGUAGE_ID, wch, nullptr);
+		}
+		// probe: does this exe really carry the requested language block?
+		// (RT_MENU IDR_MAINWND exists in every language resource set)
+		if (FindResourceEx(GetModuleHandle(nullptr), RT_MENU, MAKEINTRESOURCE(100), lang) != nullptr) {
+			return GetModuleHandle(nullptr);
+		}
+		SetThreadPreferredUILanguages(MUI_LANGUAGE_ID, nullptr, nullptr);
+	}
+#endif
 	return hDLL;
 }
 #endif // NP2_ENABLE_APP_LOCALIZATION_DLL

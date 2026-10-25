@@ -500,6 +500,10 @@ static void CleanUpResources(bool initialized) noexcept {
 	}
 #if NP2_ENABLE_APP_LOCALIZATION_DLL
 	if (hResDLL) {
+#if NP2_ENABLE_EMBEDDED_LANGUAGES
+		// the exe module handle from the embedded-language fallback must not be freed
+		if (hResDLL != g_exeInstance)
+#endif
 		FreeLibrary(hResDLL);
 	}
 #endif
@@ -649,6 +653,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 		DisplayCmdLineHelp(nullptr);
 #if NP2_ENABLE_APP_LOCALIZATION_DLL
 		if (hResDLL) {
+#if NP2_ENABLE_EMBEDDED_LANGUAGES
+			if (hResDLL != g_exeInstance)
+#endif
 			FreeLibrary(hResDLL);
 		}
 #endif
@@ -1701,7 +1708,9 @@ void UpdateWindowTitle() noexcept {
 		StrCpyEx(szCachedDisplayName, L"");
 		WCHAR szUntitled[128];
 		GetString(IDS_UNTITLED, szUntitled, COUNTOF(szUntitled));
-		lstrcat(szTitle, szUntitled);
+		if (StrNotEmpty(szUntitled)) {
+			lstrcat(szTitle, szUntitled);
+		}
 	}
 
 	if (bReadOnlyFile) {
