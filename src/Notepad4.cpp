@@ -429,6 +429,7 @@ struct EditorTab {
 	bool bReadOnlyMode;
 	bool bReadOnlyFile;
 	bool bModified;
+	int untitledId; // stable label number, assigned once and kept across tab moves
 	Sci_Position iCaret;
 	Sci_Position iAnchor;
 	Sci_Line iTopLine;
@@ -439,6 +440,7 @@ struct EditorTab {
 static EditorTab editorTabs[MAX_EDITOR_TABS];
 static int iTabCount = 0;
 static int iTabCurrent = -1;
+static int iNextUntitledId = 1; // never reused, so closing "Untitled 3" does not renumber others
 static HWND hwndTabBar = nullptr;
 static bool bTabBarUpdating = false;
 static HFONT hTabBarFont = nullptr;
@@ -7405,7 +7407,7 @@ static void TabBarItemText(int index, LPWSTR szName, int cchName) noexcept {
 	if (StrNotEmpty(editorTabs[index].szPath)) {
 		lstrcpyn(szName, PathFindFileName(editorTabs[index].szPath), cchName);
 	} else {
-		wsprintf(szName, L"Untitled %d", index + 1);
+		wsprintf(szName, L"Untitled %d", editorTabs[index].untitledId);
 	}
 	if (editorTabs[index].bModified) {
 		lstrcat(szName, L" *");
@@ -7556,6 +7558,7 @@ static bool TabNew() noexcept {
 	const int index = iTabCount;
 	editorTabs[index] = {};
 	editorTabs[index].doc = doc;
+	editorTabs[index].untitledId = iNextUntitledId++;
 	editorTabs[index].iEncoding = iDefaultEncoding;
 	editorTabs[index].iOriginalEncoding = iDefaultEncoding;
 	editorTabs[index].iEolMode = GetScintillaEOLMode(iDefaultEOLMode);
@@ -7631,6 +7634,7 @@ static void TabInitFirst() noexcept {
 		return;
 	}
 	editorTabs[0] = {};
+	editorTabs[0].untitledId = iNextUntitledId++;
 	editorTabs[0].doc = AsPointer<HANDLE>(SciCall(SCI_GETDOCPOINTER, 0, 0));
 	SciCall(SCI_ADDREFDOCUMENT, 0, AsInteger<LPARAM>(editorTabs[0].doc));
 	editorTabs[0].pLexer = pLexCurrent;
