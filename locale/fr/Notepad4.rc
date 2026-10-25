@@ -794,7 +794,7 @@ BEGIN
 		MENUITEM "FAQ en ligne",				IDM_HELP_ONLINE_WIKI
 		MENUITEM "Aide pour la ligne de commande",			IDM_CMDLINE_HELP
 		MENUITEM SEPARATOR
-		MENUITEM "A propos de Notepad4\tF1",			IDM_HELP_ABOUT
+		MENUITEM "A propos de Notepad4-ML\tF1",			IDM_HELP_ABOUT
 	END
 END
 

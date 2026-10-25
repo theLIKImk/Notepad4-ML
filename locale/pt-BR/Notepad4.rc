@@ -794,7 +794,7 @@ BEGIN
 		MENUITEM "&Wiki Online",				IDM_HELP_ONLINE_WIKI
 		MENUITEM "Ajuda da Linha de &Comando",			IDM_CMDLINE_HELP
 		MENUITEM SEPARATOR
-		MENUITEM "S&obre o Notepad4\tF1",			IDM_HELP_ABOUT
+		MENUITEM "S&obre o Notepad4-ML\tF1",			IDM_HELP_ABOUT
 	END
 END
 
