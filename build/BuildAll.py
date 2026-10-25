@@ -133,8 +133,8 @@ def prepare_build_environment():
 	if not os.path.exists(zipDir):
 		os.makedirs(zipDir)
 	for path in ['../License.txt',
-		'../doc/Notepad4.ini',
-		'../doc/Notepad4 DarkTheme.ini',
+		'../doc/Notepad4-ML.ini',
+		'../doc/Notepad4-ML DarkTheme.ini',
 		'../matepath/doc/matepath.ini']:
 		target = os.path.join(zipDir, os.path.basename(path))
 		if target.endswith('.ini'):
