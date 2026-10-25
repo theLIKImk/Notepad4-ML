@@ -3,4 +3,4 @@
 #define VERSION_BUILD 1
 #define VERSION_HASH TEXT("ml0.1.2")
 #define VERSION_REV 2
-#define VERSION_REV_FULL TEXT("ML 0.1.2 (based on upstream r6392 / 7b269f54)")
+#define VERSION_REV_FULL TEXT("based on upstream r6392 / 7b269f54")
