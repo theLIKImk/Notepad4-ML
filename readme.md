@@ -7,7 +7,7 @@
 Notepad4-ML is a multi-tab fork based on [Notepad4](https://github.com/zufuliu/notepad4),
 adding tabs and scrollbar match markers to this originally single-document lightweight editor.
 
-- **Version**: 0.1.2
+- **Version**: 0.2.0
 - **Based on upstream**: Notepad4 v26.10 (r6392, 7b269f54)
 - **Upstream baseline commit**: `3afea94b18c469b95b504553a5ece1a9e4c57d9e` (2026-10-23)
 - **License**: BSD 3-Clause, see [LICENSE](LICENSE) (full text) and [NOTICE](NOTICE) (upstream copyright and fork notice)
@@ -26,6 +26,8 @@ adding tabs and scrollbar match markers to this originally single-document light
    - Top tab bar for multiple open files, showing file names and unsaved marker `*`
    - `Ctrl+Tab` / `Ctrl+Shift+Tab` to switch, `Ctrl+W` to close, `Ctrl+N` to create new
    - Each tab independently preserves content, undo history, cursor, scroll position, encoding, line endings, and read-only state
+   - Drag a tab sideways to reorder it in the tab bar
+   - Drag a tab out of the window and drop it onto another Notepad4-ML window to move it there (unsaved content included; the source tab is closed, no save prompt)
    - Toolbar: Close Current Tab, Open in New Window
    - This feature can be freely enabled/disabled
 
