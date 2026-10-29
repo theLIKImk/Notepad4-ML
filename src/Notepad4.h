@@ -76,6 +76,17 @@ struct NP2PARAMS {
 //! increase this value when change layout for NP2PARAMS
 #define DATA_NOTEPAD4_PARAMS (0xFB10 + sizeof(NP2PARAMS))
 
+//==== Data Type for tab drag & drop between windows =========================
+// Sent via WM_COPYDATA when a tab is dragged from one window into another.
+// flagUnsaved means wchFile points at a temporary UTF-16 file whose content
+// must be detached and shown as an untitled, still modified document.
+struct NP2TABTRANSFER {
+	bool flagUnsaved;
+	WCHAR wchFile;
+};
+//! increase this value when change layout for NP2TABTRANSFER
+#define DATA_NOTEPAD4_TABTRANSFER (0xFB20 + sizeof(NP2TABTRANSFER))
+
 //==== Toolbar Style ==========================================================
 #define WS_TOOLBAR (WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS |				\
 					TBSTYLE_TOOLTIPS | TBSTYLE_FLAT | TBSTYLE_ALTDRAG |		\

@@ -445,10 +445,31 @@ static HWND hwndTabBar = nullptr;
 static bool bTabBarUpdating = false;
 static HFONT hTabBarFont = nullptr;
 
+// drag a tab into another Notepad4-ML window, or reorder it inside this one
+static HIMAGELIST hTabDragImage = nullptr;
+static int iTabDragIndex = -1;
+static POINT ptTabDragStart = {};
+static bool bTabDragArmed = false;
+static bool bTabDragging = false;
+static int iTabDropTarget = -1;  // frame drawn around this tab while dragging inside the bar
+
 static void TabBarCreate(HWND hwnd) noexcept;
 static void TabBarUpdateFont() noexcept;
 static void TabBarUpdate() noexcept;
 static void TabBarResize(int cx, int &y, int &cy) noexcept;
+static void TabBarItemText(int index, LPWSTR szName, int cchName) noexcept;
+static LRESULT CALLBACK TabBarDragProc(HWND hwnd, UINT umsg, WPARAM wParam, LPARAM lParam,
+	UINT_PTR uIdSubclass, DWORD_PTR dwRefData) noexcept;
+static void TabBarBeginDrag(HWND hwnd, int index, POINT ptClient) noexcept;
+static void TabBarEndDrag() noexcept;
+static HWND TabBarFindTargetWindow(POINT ptScreen) noexcept;
+static int TabBarReorderTargetIndex(POINT ptScreen) noexcept;
+static void TabBarUpdateDropTarget(int index) noexcept;
+static void TabBarPaintDropTarget(HWND hwnd) noexcept;
+static void TabBarReorder(int from, int to) noexcept;
+static bool SendTabTransfer(HWND hwndTarget, LPCWSTR lpszFile, bool flagUnsaved) noexcept;
+static bool TabMoveToWindow(HWND hwndTarget, int index) noexcept;
+static void TabSaveCurrent() noexcept;
 static void TabSyncCurrent() noexcept;
 static bool TabSwitchTo(int index) noexcept;
 static bool TabNew() noexcept;
@@ -1348,6 +1369,18 @@ LRESULT CALLBACK MainWndProc(HWND hwnd, UINT umsg, WPARAM wParam, LPARAM lParam)
 
 		// Reset Change Notify
 		//bPendingChangeNotify = false;
+
+		// tab dragged from another Notepad4-ML window
+		if (pcds->dwData == DATA_NOTEPAD4_TABTRANSFER && pcds->cbData >= sizeof(NP2TABTRANSFER)) {
+			const NP2TABTRANSFER * const transfer = static_cast<NP2TABTRANSFER *>(pcds->lpData);
+			const bool bOpened = FileLoadInTab(&transfer->wchFile);
+			if (bOpened && transfer->flagUnsaved) {
+				WCHAR szTempFile[MAX_PATH];
+				lstrcpyn(szTempFile, &transfer->wchFile, COUNTOF(szTempFile));
+				DetachTransferredDocument(szTempFile);
+			}
+			return bOpened ? TRUE : FALSE;
+		}
 
 		if (pcds->dwData == DATA_NOTEPAD4_PARAMS && pcds->cbData >= sizeof(NP2PARAMS)) {
 			const NP2PARAMS * const params = static_cast<NP2PARAMS *>(pcds->lpData);
@@ -7396,6 +7429,8 @@ static void TabBarCreate(HWND hwnd) noexcept {
 		0, 0, 0, 0, hwnd, AsPointer<HMENU, ULONG_PTR>(IDC_TABBAR), g_exeInstance, nullptr);
 	if (hwndTabBar) {
 		TabBarUpdateFont();
+		// subclass to detect tab dragging (selection/clicks still pass through)
+		SetWindowSubclass(hwndTabBar, TabBarDragProc, 2, 0);
 	}
 }
 
@@ -7440,6 +7475,283 @@ static void TabBarUpdate() noexcept {
 	TabCtrl_SetCurSel(hwndTabBar, iTabCurrent);
 	bTabBarUpdating = false;
 	InvalidateRect(hwndTabBar, nullptr, TRUE);
+}
+
+//==== Tab drag & drop ========================================================
+
+static LRESULT CALLBACK TabBarDragProc(HWND hwnd, UINT umsg, WPARAM wParam, LPARAM lParam,
+	UINT_PTR uIdSubclass, DWORD_PTR dwRefData) noexcept {
+	UNREFERENCED_PARAMETER(dwRefData);
+
+	switch (umsg) {
+	case WM_LBUTTONDOWN: {
+		const POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+		TCHITTESTINFO hti = {};
+		hti.pt = pt;
+		const int index = TabCtrl_HitTest(hwnd, &hti);
+		if (index >= 0) {
+			iTabDragIndex = index;
+			ptTabDragStart = pt;
+			bTabDragArmed = true;
+		}
+		break;
+	}
+
+	case WM_PAINT: {
+		// let the tab control paint itself, then overlay the drop-target frame
+		const LRESULT result = DefSubclassProc(hwnd, umsg, wParam, lParam);
+		TabBarPaintDropTarget(hwnd);
+		return result;
+	}
+
+	case WM_MOUSEMOVE:
+		if (bTabDragArmed && (wParam & MK_LBUTTON)) {
+			const POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+			const int cxDrag = GetSystemMetrics(SM_CXDRAG);
+			const int cyDrag = GetSystemMetrics(SM_CYDRAG);
+			const int dx = pt.x - ptTabDragStart.x;
+			const int dy = pt.y - ptTabDragStart.y;
+			if (dx >= cxDrag || dx <= -cxDrag || dy >= cyDrag || dy <= -cyDrag) {
+				bTabDragArmed = false;
+				TabBarBeginDrag(hwnd, iTabDragIndex, pt);
+			}
+		}
+		if (bTabDragging) {
+			POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+			ClientToScreen(hwnd, &pt);
+			ImageList_DragMove(pt.x, pt.y);
+			// hide the drag image so WindowFromPoint() sees the window underneath it
+			ImageList_DragShowNolock(FALSE);
+			const HWND targetWindow = TabBarFindTargetWindow(pt);
+			const int reorderTarget = targetWindow ? -1 : TabBarReorderTargetIndex(pt);
+			ImageList_DragShowNolock(TRUE);
+			TabBarUpdateDropTarget(reorderTarget);
+			SetCursor(LoadCursor(nullptr, (targetWindow || reorderTarget >= 0) ? IDC_ARROW : IDC_NO));
+			return 0;
+		}
+		break;
+
+	case WM_LBUTTONUP:
+		if (bTabDragging) {
+			TabBarEndDrag();
+			const POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+			POINT ptScreen = pt;
+			ClientToScreen(hwnd, &ptScreen);
+			if (const HWND target = TabBarFindTargetWindow(ptScreen)) {
+				TabMoveToWindow(target, iTabDragIndex);
+			} else {
+				const int to = TabBarReorderTargetIndex(ptScreen);
+				if (to >= 0 && to != iTabDragIndex) {
+					TabBarReorder(iTabDragIndex, to);
+				}
+			}
+			return 0;
+		}
+		bTabDragArmed = false;
+		break;
+
+	case WM_CAPTURECHANGED:
+		if (bTabDragging) {
+			TabBarEndDrag();
+		}
+		bTabDragArmed = false;
+		break;
+
+	case WM_KEYDOWN:
+		if (bTabDragging && wParam == VK_ESCAPE) {
+			TabBarEndDrag();
+			return 0;
+		}
+		break;
+
+	case WM_NCDESTROY:
+		RemoveWindowSubclass(hwnd, TabBarDragProc, uIdSubclass);
+		break;
+	}
+
+	return DefSubclassProc(hwnd, umsg, wParam, lParam);
+}
+
+static void TabBarBeginDrag(HWND hwnd, int index, POINT ptClient) noexcept {
+	if (index < 0 || index >= iTabCount) {
+		return;
+	}
+	RECT rc = {};
+	if (!TabCtrl_GetItemRect(hwnd, index, &rc)) {
+		return;
+	}
+	const int cx = rc.right - rc.left;
+	const int cy = rc.bottom - rc.top;
+	if (cx <= 0 || cy <= 0) {
+		return;
+	}
+
+	HDC hdc = GetDC(hwnd);
+	HDC hdcMem = CreateCompatibleDC(hdc);
+	HBITMAP hbm = CreateCompatibleBitmap(hdc, cx, cy);
+	HBITMAP hbmOld = static_cast<HBITMAP>(SelectObject(hdcMem, hbm));
+	const COLORREF crMask = RGB(0xFF, 0x00, 0xFF);
+	RECT rcFill = { 0, 0, cx, cy };
+	HBRUSH hbr = CreateSolidBrush(crMask);
+	FillRect(hdcMem, &rcFill, hbr);
+	DeleteObject(hbr);
+
+	WCHAR szName[MAX_PATH + 16];
+	TabBarItemText(index, szName, COUNTOF(szName));
+	HFONT hFontOld = static_cast<HFONT>(SelectObject(hdcMem, hTabBarFont ? hTabBarFont
+		: static_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT))));
+	SetTextColor(hdcMem, GetSysColor(COLOR_BTNTEXT));
+	SetBkColor(hdcMem, crMask);
+	SetBkMode(hdcMem, OPAQUE);
+	DrawText(hdcMem, szName, -1, &rcFill, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+	SelectObject(hdcMem, hFontOld);
+	SelectObject(hdcMem, hbmOld);
+	DeleteDC(hdcMem);
+	ReleaseDC(hwnd, hdc);
+
+	HIMAGELIST himl = ImageList_Create(cx, cy, ILC_COLOR32 | ILC_MASK, 1, 1);
+	if (!himl) {
+		DeleteObject(hbm);
+		return;
+	}
+	ImageList_AddMasked(himl, hbm, crMask);
+	DeleteObject(hbm);
+
+	const POINT ptHot = { cx / 2, cy / 2 };
+	bTabDragging = true;
+	hTabDragImage = himl;
+	SetCapture(hwnd);
+	ImageList_BeginDrag(himl, 0, ptHot.x, ptHot.y);
+	POINT ptScreen = ptClient;
+	ClientToScreen(hwnd, &ptScreen);
+	ImageList_DragEnter(GetDesktopWindow(), ptScreen.x, ptScreen.y);
+}
+
+static void TabBarEndDrag() noexcept {
+	if (!bTabDragging) {
+		return;
+	}
+	bTabDragging = false;
+	TabBarUpdateDropTarget(-1);
+	ImageList_DragLeave(GetDesktopWindow());
+	ImageList_EndDrag();
+	if (hTabDragImage) {
+		ImageList_Destroy(hTabDragImage);
+		hTabDragImage = nullptr;
+	}
+	ReleaseCapture();
+}
+
+static HWND TabBarFindTargetWindow(POINT ptScreen) noexcept {
+	HWND hwnd = WindowFromPoint(ptScreen);
+	if (!hwnd) {
+		return nullptr;
+	}
+	const HWND root = GetAncestor(hwnd, GA_ROOT);
+	if (!root || root == hwndMain) {
+		return nullptr;
+	}
+	WCHAR szClassName[64];
+	if (GetClassName(root, szClassName, COUNTOF(szClassName)) && StrCaseEqual(szClassName, wchWndClass)) {
+		return root;
+	}
+	return nullptr;
+}
+
+// drop target inside this window's own tab bar, or -1 if the point is not over it
+static int TabBarReorderTargetIndex(POINT ptScreen) noexcept {
+	if (!hwndTabBar) {
+		return -1;
+	}
+	RECT rc;
+	GetWindowRect(hwndTabBar, &rc);
+	if (!PtInRect(&rc, ptScreen)) {
+		return -1;
+	}
+	POINT ptClient = ptScreen;
+	ScreenToClient(hwndTabBar, &ptClient);
+	TCHITTESTINFO hti = {};
+	hti.pt = ptClient;
+	int index = TabCtrl_HitTest(hwndTabBar, &hti);
+	if (index < 0) {
+		// dropped on empty space of the bar (e.g. to the right of the tabs) → move to end
+		index = iTabCount - 1;
+	}
+	return index;
+}
+
+// highlight the tab the dragged one would land on; -1 clears the highlight
+static void TabBarUpdateDropTarget(int index) noexcept {
+	if (index == iTabDropTarget) {
+		return;
+	}
+	const int old = iTabDropTarget;
+	iTabDropTarget = index;
+	if (!hwndTabBar) {
+		return;
+	}
+	RECT rc;
+	if (TabCtrl_GetItemRect(hwndTabBar, old, &rc)) {
+		InvalidateRect(hwndTabBar, &rc, TRUE);
+	}
+	if (TabCtrl_GetItemRect(hwndTabBar, index, &rc)) {
+		InvalidateRect(hwndTabBar, &rc, TRUE);
+	}
+}
+
+// draw the drop-target frame on top of the system painted tab
+static void TabBarPaintDropTarget(HWND hwnd) noexcept {
+	if (!bTabDragging || iTabDropTarget < 0) {
+		return;
+	}
+	RECT rc;
+	if (!TabCtrl_GetItemRect(hwnd, iTabDropTarget, &rc)) {
+		return;
+	}
+	HDC hdc = GetDC(hwnd);
+	if (!hdc) {
+		return;
+	}
+	const int inset = MulDiv(2, static_cast<int>(g_uCurrentDPI), USER_DEFAULT_SCREEN_DPI);
+	InflateRect(&rc, inset, 0);
+	HBRUSH hbr = CreateSolidBrush(GetSysColor(COLOR_HIGHLIGHT));
+	FrameRect(hdc, &rc, hbr);
+	DeleteObject(hbr);
+	ReleaseDC(hwnd, hdc);
+}
+
+static void TabBarReorder(int from, int to) noexcept {
+	if (from < 0 || from >= iTabCount || to < 0 || to >= iTabCount || from == to) {
+		return;
+	}
+	// keep the struct of the currently visible tab up to date before moving entries
+	TabSaveCurrent();
+
+	const EditorTab moved = editorTabs[from];
+	if (from < to) {
+		for (int i = from; i < to; i++) {
+			editorTabs[i] = editorTabs[i + 1];
+		}
+	} else {
+		for (int i = from; i > to; i--) {
+			editorTabs[i] = editorTabs[i - 1];
+		}
+	}
+	editorTabs[to] = moved;
+
+	if (iTabCurrent == from) {
+		iTabCurrent = to;
+	} else if (from < to) {
+		if (iTabCurrent > from && iTabCurrent <= to) {
+			iTabCurrent--;
+		}
+	} else {
+		if (iTabCurrent >= to && iTabCurrent < from) {
+			iTabCurrent++;
+		}
+	}
+
+	TabBarUpdate();
 }
 
 static void TabSaveCurrent() noexcept {
@@ -8283,6 +8595,84 @@ static void DetachTransferredDocument(LPCWSTR pszTempFile) noexcept {
 	UpdateWindowTitle();
 	UpdateToolbar();
 	UpdateStatusbar();
+}
+
+//=============================================================================
+//
+// SendTabTransfer()
+//
+//  Hand a tab over to another running Notepad4-ML window through WM_COPYDATA.
+//  flagUnsaved means lpszFile points at a temporary UTF-16 file; the receiver
+//  detaches it as an untitled, still modified document.
+//
+static bool SendTabTransfer(HWND hwndTarget, LPCWSTR lpszFile, bool flagUnsaved) noexcept {
+	const DWORD cb = static_cast<DWORD>(sizeof(NP2TABTRANSFER) + (lstrlen(lpszFile) + 1) * sizeof(WCHAR));
+	NP2TABTRANSFER *transfer = static_cast<NP2TABTRANSFER *>(GlobalAlloc(GPTR, cb));
+	if (!transfer) {
+		return false;
+	}
+	transfer->flagUnsaved = flagUnsaved;
+	lstrcpy(&transfer->wchFile, lpszFile);
+
+	COPYDATASTRUCT cds;
+	cds.dwData = DATA_NOTEPAD4_TABTRANSFER;
+	cds.cbData = cb;
+	cds.lpData = transfer;
+
+	const LRESULT result = SendMessage(hwndTarget, WM_COPYDATA, 0, AsInteger<LPARAM>(&cds));
+	GlobalFree(transfer);
+	return result != 0;
+}
+
+//=============================================================================
+//
+// TabMoveToWindow()
+//
+//  Move a tab from this window into hwndTarget. Unsaved content is written to
+//  a temporary file first; saved, unmodified tabs are handed over by path only.
+//  The source tab is closed with "moved" semantics, i.e. without asking again.
+//
+static bool TabMoveToWindow(HWND hwndTarget, int index) noexcept {
+	if (!hwndTarget || index < 0 || index >= iTabCount) {
+		return false;
+	}
+
+	const int current = iTabCurrent;
+	if (index != current && !TabSwitchTo(index)) {
+		return false;
+	}
+
+	// an empty untitled tab has nothing to move; just close it silently
+	if (StrIsEmpty(szCurFile) && !IsDocumentModified()) {
+		TabCloseMoved();
+		return true;
+	}
+
+	WCHAR szTempFile[MAX_PATH];
+	SetStrEmpty(szTempFile);
+	const bool unsaved = IsDocumentModified();
+	if (unsaved && !SaveDocumentToTempFile(szTempFile, COUNTOF(szTempFile))) {
+		MsgBoxWarn(MB_OK, IDS_ERR_SAVEFILE, szTempFile);
+		if (index != current) {
+			TabSwitchTo(current);
+		}
+		return false;
+	}
+
+	const LPCWSTR path = unsaved ? szTempFile : szCurFile;
+	const bool sent = SendTabTransfer(hwndTarget, path, unsaved);
+	if (!sent) {
+		if (unsaved) {
+			DeleteFile(szTempFile);
+		}
+		if (index != current) {
+			TabSwitchTo(current);
+		}
+		return false;
+	}
+
+	TabCloseMoved();
+	return true;
 }
 
 //=============================================================================
